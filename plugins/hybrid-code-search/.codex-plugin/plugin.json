@@ -1,6 +1,6 @@
 {
   "name": "hybrid-code-search",
-  "version": "0.1.0+codex.20260819224311",
+  "version": "0.1.0+codex.20260820071107",
   "description": "Read-only semantic search through Code Index with exact and AST verification workflows.",
   "author": {
     "name": "ADA-B"

@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -12,7 +13,13 @@ from typing import Any, Dict, Optional
 from .config import Config
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+INDEX_RECIPE_KEYS = ("max_file_bytes", "chunk_chars", "chunk_overlap_chars", "rg_path")
+PROJECT_OVERRIDE_KEYS = (
+    "backend", "embedding_profile", "qdrant_url", "qdrant_secret_ref", "lancedb_root",
+    "debounce_ms", "bulk_change_threshold", "max_file_bytes", "chunk_chars",
+    "chunk_overlap_chars", "batch_size", "rg_path",
+)
 
 
 def app_root() -> Path:
@@ -51,10 +58,11 @@ def default_registry() -> Dict[str, Any]:
             "chunk_overlap_chars": 200,
             "batch_size": 32,
             "rg_path": str(Path.home() / "scoop" / "shims" / "rg.exe"),
-            "kilo_lancedb_roots": [],
         },
         "profiles": {
             "default-code": {
+                "display_name": "Default code",
+                "scope": "global",
                 "provider": "fastembed",
                 "model": "jinaai/jina-embeddings-v2-base-code",
                 "dimension": 768,
@@ -73,23 +81,75 @@ class Registry:
     def load(self) -> Dict[str, Any]:
         if not self.path.exists():
             return default_registry()
-        data = json.loads(self.path.read_text(encoding="utf-8"))
-        if data.get("schema_version") != SCHEMA_VERSION:
-            raise ValueError(f"Unsupported Code Index config schema: {data.get('schema_version')}")
+        raw = json.loads(self.path.read_text(encoding="utf-8"))
+        version = int(raw.get("schema_version", 1))
+        if version == 1:
+            raw = self._migrate_v1(raw)
+            self.save(raw)
+        elif version != SCHEMA_VERSION:
+            raise ValueError(f"Unsupported Code Index config schema: {version}")
         merged = default_registry()
-        merged["defaults"].update(data.get("defaults") or {})
-        merged["profiles"].update(data.get("profiles") or {})
-        merged["projects"].update(data.get("projects") or {})
+        merged["defaults"].update(raw.get("defaults") or {})
+        merged["profiles"].update(raw.get("profiles") or {})
+        merged["projects"].update(raw.get("projects") or {})
         return merged
+
+    def _migrate_v1(self, raw: Dict[str, Any]) -> Dict[str, Any]:
+        backup = self.path.with_name(self.path.name + ".v1.bak")
+        if self.path.exists() and not backup.exists():
+            shutil.copy2(self.path, backup)
+        data = copy.deepcopy(raw)
+        defaults = data.setdefault("defaults", {})
+        defaults.pop("kilo_lancedb_roots", None)
+        base = default_registry()
+        resolved_defaults = {**base["defaults"], **defaults}
+        for profile_id, profile in (data.setdefault("profiles", {}) or {}).items():
+            profile.setdefault("display_name", profile_id)
+            profile.setdefault("scope", "global")
+        for project in (data.setdefault("projects", {}) or {}).values():
+            root = Path(project["path"])
+            identifier = project.get("project_id") or project_id(str(root))
+            overrides = {k: v for k, v in (project.get("overrides") or {}).items() if k in PROJECT_OVERRIDE_KEYS}
+            effective = {**resolved_defaults, **overrides}
+            sources: Dict[str, Any] = {}
+            for source_id, source in (project.get("sources") or {}).items():
+                if source.get("owner", "code-index") != "code-index" or source.get("mode", "read-write") == "read-only":
+                    continue
+                managed = copy.deepcopy(source)
+                managed.pop("owner", None)
+                managed.pop("mode", None)
+                managed.setdefault("id", source_id)
+                managed.setdefault("embedding_profile", effective["embedding_profile"])
+                managed.setdefault("recipe", {key: effective[key] for key in INDEX_RECIPE_KEYS})
+                sources[source_id] = managed
+            active = project.get("active_source_id")
+            lost_active = active not in sources
+            if lost_active:
+                preferred = f"managed-{resolved_defaults['backend']}"
+                if preferred in sources:
+                    active = preferred
+                elif sources:
+                    active = sorted(sources)[0]
+                else:
+                    created = self._managed_source(data, root, identifier, resolved_defaults["backend"])
+                    sources[created["id"]] = created
+                    active = created["id"]
+                project["watch_enabled"] = False
+            project["project_id"] = identifier
+            project["sources"] = sources
+            project["active_source_id"] = active
+            project["overrides"] = overrides
+        data["schema_version"] = SCHEMA_VERSION
+        return data
 
     def save(self, data: Dict[str, Any]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        data = copy.deepcopy(data)
-        data["schema_version"] = SCHEMA_VERSION
+        value = copy.deepcopy(data)
+        value["schema_version"] = SCHEMA_VERSION
         handle, temporary = tempfile.mkstemp(prefix="config-", suffix=".json", dir=str(self.path.parent))
         try:
             with os.fdopen(handle, "w", encoding="utf-8") as stream:
-                json.dump(data, stream, ensure_ascii=False, indent=2)
+                json.dump(value, stream, ensure_ascii=False, indent=2)
                 stream.write("\n")
             os.replace(temporary, self.path)
         finally:
@@ -102,43 +162,40 @@ class Registry:
             raise ValueError(f"Project directory does not exist: {root}")
         data = self.load()
         key = normalize_project_path(str(root))
-        existing = data["projects"].get(key)
-        if existing:
-            return existing
+        if key in data["projects"]:
+            return data["projects"][key]
         identifier = project_id(str(root))
-        backend = data["defaults"]["backend"]
-        source_id = f"managed-{backend}"
+        source = self._managed_source(data, root, identifier, data["defaults"]["backend"])
         project = {
-            "path": str(root),
-            "project_id": identifier,
-            "watch_enabled": False,
-            "active_source_id": source_id,
-            "overrides": {},
-            "sources": {
-                source_id: self._managed_source(data, root, identifier, backend),
-            },
+            "path": str(root), "project_id": identifier, "watch_enabled": False,
+            "active_source_id": source["id"], "overrides": {}, "sources": {source["id"]: source},
         }
         data["projects"][key] = project
         self.save(data)
         return project
 
-    def _managed_source(self, data: Dict[str, Any], root: Path, identifier: str, backend: str) -> Dict[str, Any]:
+    def _managed_source(
+        self, data: Dict[str, Any], root: Path, identifier: str, backend: str,
+        source_id: Optional[str] = None, settings: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        values = {**default_registry()["defaults"], **data.get("defaults", {}), **(settings or {})}
+        source_id = source_id or f"managed-{backend}"
+        suffix = "" if source_id == f"managed-{backend}" else f"-{source_id.rsplit('-', 1)[-1]}"
         if backend == "qdrant":
             location = {
-                "url": data["defaults"]["qdrant_url"],
-                "collection": f"code-index-{identifier}",
-                "secret_ref": data["defaults"].get("qdrant_secret_ref", ""),
+                "url": values["qdrant_url"],
+                "collection": f"code-index-{identifier}{suffix}",
+                "secret_ref": values.get("qdrant_secret_ref", ""),
             }
         else:
-            directory = Path(data["defaults"]["lancedb_root"]) / f"{safe_name(root.name)}-{identifier}"
+            directory = Path(values["lancedb_root"]) / f"{safe_name(root.name)}-{identifier}{suffix}"
             location = {"directory": str(directory)}
         return {
-            "id": f"managed-{backend}",
-            "owner": "code-index",
+            "id": source_id,
             "backend": backend,
-            "mode": "read-write",
-            "embedding_profile": data["defaults"]["embedding_profile"],
+            "embedding_profile": values["embedding_profile"],
             "location": location,
+            "recipe": {key: values[key] for key in INDEX_RECIPE_KEYS},
         }
 
     def project(self, project_path: str, create: bool = False) -> Dict[str, Any]:
@@ -165,25 +222,26 @@ class Registry:
             raise ValueError("Project has no valid active source")
         return project, source
 
+    def resolved_settings(self, project: Dict[str, Any]) -> Dict[str, Any]:
+        data = self.load()
+        return {**data["defaults"], **(project.get("overrides") or {})}
+
     def resolved_config(
-        self,
-        project: Dict[str, Any],
-        source: Dict[str, Any],
-        embedding_secret: str = "",
-        qdrant_secret: str = "",
+        self, project: Dict[str, Any], source: Dict[str, Any],
+        embedding_secret: str = "", qdrant_secret: str = "",
     ) -> Config:
         data = self.load()
-        defaults = dict(data["defaults"])
-        defaults.update(project.get("overrides") or {})
-        profile_id = source.get("embedding_profile") or defaults["embedding_profile"]
+        values = self.resolved_settings(project)
+        values.update(source.get("recipe") or {})
+        profile_id = source.get("embedding_profile") or values["embedding_profile"]
         profile = data["profiles"].get(profile_id)
         if profile is None:
             raise ValueError(f"Embedding profile does not exist: {profile_id}")
         location = source.get("location") or {}
-        values = {
-            **defaults,
+        config_values = {
+            **values,
             "backend": source["backend"],
-            "qdrant_url": location.get("url", defaults["qdrant_url"]),
+            "qdrant_url": location.get("url", values["qdrant_url"]),
             "qdrant_api_key": qdrant_secret if source["backend"] == "qdrant" else "",
             "collection": location.get("collection", ""),
             "lancedb_path": location.get("directory", ""),
@@ -195,6 +253,6 @@ class Registry:
             "model_cache": app_root() / "models",
             "lock_dir": app_root() / "locks",
         }
-        config = Config.from_mapping(values)
+        config = Config.from_mapping(config_values)
         config.validate()
         return config

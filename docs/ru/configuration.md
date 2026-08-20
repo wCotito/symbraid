@@ -6,11 +6,15 @@ Registry находится в `%LOCALAPPDATA%\CodeIndex\config.json`. Конф�
 записывается в индексируемые репозитории. API keys находятся в Windows Credential
 Manager; JSON содержит только `secret_ref`.
 
+Текущая schema — v2. При первом чтении v1 создаётся `config.json.v1.bak`, затем
+legacy external source references удаляются из registry без изменения физических
+Qdrant collections или LanceDB directories.
+
 Основные разделы:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "defaults": {},
   "profiles": {},
   "projects": {}
@@ -35,8 +39,7 @@ $codeIndex = "$env:LOCALAPPDATA\CodeIndex\bin\code-index.cmd"
 - `debounce_ms`, `bulk_change_threshold`;
 - `max_file_bytes`;
 - `chunk_chars`, `chunk_overlap_chars`, `batch_size`;
-- `rg_path`;
-- `kilo_lancedb_roots`.
+- `rg_path`.
 
 Показать defaults:
 
@@ -79,16 +82,16 @@ Get-Content .\qdrant-key.txt -Raw |
 - словарь `sources`;
 - один `active_source_id`.
 
+Через `Code Index: Manage` проект может переопределить backend, embedding profile,
+Qdrant URL/key, LanceDB root, watcher и tuning. Изменения модели/chunking создают
+новый source с полной переиндексацией; изменение backend/location переносит vectors.
+В обоих случаях старый source сохраняется.
+
 ## Managed source
 
 Code Index может записывать managed source. Для Qdrant создаётся collection
 `code-index-<project_id>`. Для LanceDB создаётся directory
 `<project-name>-<project_id>` с таблицами `vector` и `metadata`.
-
-## External source
-
-External Kilo source всегда имеет `mode: read-only`. Его provider/model/dimension
-должны совпасть с выбранным embedding profile, иначе активация отклоняется.
 
 ## Locks
 

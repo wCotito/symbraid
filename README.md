@@ -5,7 +5,7 @@
 
 Проект рассчитан на Windows и хранит индексы локально. По умолчанию используется
 встраиваемая LanceDB, поэтому Docker не нужен. При желании можно переключиться на
-Qdrant или подключить существующий индекс Kilo Code в режиме только для чтения.
+managed Qdrant с проверенным переносом vectors и сохранением rollback source.
 
 ## Что входит в проект
 
@@ -71,7 +71,6 @@ watcher для текущего workspace; watcher существует толь
 - [CLI: команды и примеры](docs/ru/cli.md)
 - [VS Code extension и watcher](docs/ru/vscode-extension.md)
 - [Codex plugin и MCP](docs/ru/codex-plugin.md)
-- [Подключение индексов Kilo Code](docs/ru/kilo-code.md)
 - [Диагностика проблем](docs/ru/troubleshooting.md)
 - [Инструкция для агентов по развёртыванию](docs/ru/agent-deployment.md)
 
@@ -81,7 +80,7 @@ watcher для текущего workspace; watcher существует толь
   внешнему embedding endpoint;
 - API keys хранятся в Windows Credential Manager через `keyring`;
 - ключи не записываются в `config.json` и не передаются аргументами командной строки;
-- Kilo‑источники всегда read-only;
+- старый managed source сохраняется при migration/reindex;
 - semantic result считается подсказкой, а не доказательством: skill требует
   `semantic → rg → AST → чтение актуального файла`.
 

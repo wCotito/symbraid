@@ -9,7 +9,7 @@ Extension управляет Code Index через JSON CLI. Он не соде�
 - status bar с `Off`, `Indexing`, `On · LanceDB/Qdrant`;
 - watcher save/create/delete с debounce и full reconcile после смены Git HEAD;
 - watcher существует только в lifecycle открытого окна VS Code;
-- Kilo sources отображаются как `Kilo · Ready/Stale/Error` и не изменяются.
+- отдельные глобальные и проектные настройки backend, profiles и watcher;
 
 Разработка:
 

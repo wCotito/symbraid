@@ -9,10 +9,14 @@ Extension ID: `ada-b.code-index`.
 - выбрать default backend;
 - задать Qdrant URL/API key и LanceDB root;
 - настроить embedding provider/model/dimension/base URL/key;
-- задать project overrides debounce/bulk/profile;
+- задать project overrides backend/storage/profile/watcher и tuning;
 - посмотреть sources и выбрать active source;
-- обнаружить Kilo indexes;
 - запустить reconcile или migration.
+
+Панель локализована на русский и английский по locale VS Code и разделена на
+«Обзор», «Глобальные», «Проект», «Модели» и «Источники». Секретные поля никогда
+не заполняются сохранёнными значениями: интерфейс показывает только факт наличия
+ключа. Перед transfer/reindex показывается impact plan и требуется подтверждение.
 
 Все изменения выполняются через JSON CLI. Extension не читает и не записывает
 vector store напрямую.
@@ -26,9 +30,7 @@ vector store напрямую.
 - `Code Index: On · LanceDB` или `On · Qdrant` — watcher включён;
 - `Code Index: Error` — наведите курсор для текста ошибки.
 
-Клик по managed status переключает watcher. Для external source показывается
-`Kilo · Ready`, `Kilo · Stale` или `Kilo · Error`; клик открывает Manage и не
-управляет watcher Kilo.
+Клик по status переключает watcher активного managed source.
 
 ## Как работает watcher
 

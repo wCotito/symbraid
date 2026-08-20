@@ -10,6 +10,20 @@ $codeIndex = "$env:LOCALAPPDATA\CodeIndex\bin\code-index.cmd"
 Все команды возвращают JSON в stdout. Ошибки возвращают JSON в stderr и ненулевой
 exit code. Это позволяет безопасно вызывать CLI из VS Code и автоматизации.
 
+## Settings API
+
+```powershell
+& $codeIndex settings show --project C:\repo
+'{"backend":"qdrant"}' | & $codeIndex settings plan C:\repo
+'{"backend":"qdrant","plan_hash":"..."}' | & $codeIndex settings apply-project C:\repo
+'{"backend":"lancedb"}' | & $codeIndex settings apply-defaults
+```
+
+Payload передаётся только через stdin. `settings plan` возвращает impact
+`configuration-only`, `transfer` или `reindex`; apply отклоняет устаревший
+`plan_hash`. Для проверки доступны `settings test-backend` и
+`profile test-config`, также принимающие JSON через stdin.
+
 ## Проекты
 
 ```powershell
@@ -27,28 +41,11 @@ exit code. Это позволяет безопасно вызывать CLI и�
 
 ```powershell
 & $codeIndex source list C:\repo
-& $codeIndex source detect C:\repo
 & $codeIndex source use C:\repo managed-lancedb
 ```
 
-Добавить Kilo LanceDB вручную:
-
-```powershell
-& $codeIndex source add-kilo-lancedb C:\repo kilo-local D:\kilo\workspace-index `
-  --profile kilo-embedding
-& $codeIndex source use C:\repo kilo-local
-```
-
-Добавить Kilo Qdrant:
-
-```powershell
-& $codeIndex source add-kilo-qdrant C:\repo kilo-qdrant `
-  http://127.0.0.1:18133 ws-0123456789abcdef `
-  --profile kilo-embedding
-```
-
-Для защищённого Qdrant добавьте `--qdrant-api-key-stdin` и передайте ключ в stdin.
-`--activate` разрешён только после успешной проверки metadata/profile.
+Все sources являются managed. Переключение разрешено только после проверки
+metadata/profile/count; предыдущий source сохраняется для rollback.
 
 ## Embedding profiles
 
@@ -84,7 +81,7 @@ $key | & $codeIndex profile set remote-code ... --api-key-stdin
 & $codeIndex search C:\repo "валидация платежа" --path-filter "src/payments"
 ```
 
-`top_k` ограничивается диапазоном 1–20. Результат содержит source/owner/backend,
+`top_k` ограничивается диапазоном 1–20. Результат содержит source/backend,
 score, path, symbol/kind, строки, preview и hashes. Перед изменением файла результат
 нужно проверить через `rg`, AST и чтение исходника.
 

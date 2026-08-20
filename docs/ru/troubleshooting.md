@@ -62,8 +62,7 @@ dimension. Создайте правильный profile или перестро
 ## VS Code status Unavailable/Error
 
 Проверьте наличие runtime launcher и вызовите CLI вручную. После установки
-перезапустите `Developer: Reload Window`. Для Kilo Error откройте Manage и сравните
-metadata с profile.
+перезапустите `Developer: Reload Window`, откройте Manage и проверьте active source.
 
 ## Codex не видит MCP tools
 

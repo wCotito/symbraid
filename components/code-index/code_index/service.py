@@ -1,21 +1,17 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
+import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence
 
 from .embeddings import Embedder
 from .indexer import CodeIndexer, canonical_project, repo_identity
-from .kilo import (
-    KiloLanceDBSource,
-    KiloQdrantSource,
-    kilo_lancedb_directory,
-    kilo_qdrant_collection,
-    validate_profile,
-)
 from .lancedb_store import LanceDBStore
 from .qdrant import QdrantStore
-from .registry import Registry, normalize_project_path, safe_name
+from .registry import INDEX_RECIPE_KEYS, PROJECT_OVERRIDE_KEYS, Registry
 from .secrets import get_secret
 
 
@@ -45,236 +41,271 @@ class CodeIndexService:
     def _store(config):
         return QdrantStore(config) if config.backend == "qdrant" else LanceDBStore(config)
 
-    def _managed(self, project_path: str, require_write: bool = False):
+    def _active(self, project_path: str):
         project, source = self.registry.active_source(project_path)
-        if source["owner"] != "code-index":
-            if require_write:
-                raise PermissionError("Active source is external and read-only")
-            return project, source, None, None
         config = self._config(project, source)
         store = self._store(config)
         return project, source, config, CodeIndexer(config, store, Embedder(config))
 
     def index(self, project_path: str, force: bool = False) -> Dict[str, Any]:
-        project, source, _, indexer = self._managed(project_path, require_write=True)
+        project, source, _, indexer = self._active(project_path)
         result = indexer.index_project(project["path"], force)
-        return {**result, "source_id": source["id"], "owner": source["owner"]}
+        return {**result, "source_id": source["id"]}
 
     def refresh(self, project_path: str, files: Sequence[str]) -> Dict[str, Any]:
-        project, source, _, indexer = self._managed(project_path, require_write=True)
+        project, source, _, indexer = self._active(project_path)
         result = indexer.refresh_files(project["path"], files)
-        return {**result, "source_id": source["id"], "owner": source["owner"], "backend": source["backend"]}
+        return {**result, "source_id": source["id"], "backend": source["backend"]}
 
     def status(self, project_path: str) -> Dict[str, Any]:
-        project, source = self.registry.active_source(project_path)
-        if source["owner"] == "code-index":
-            config = self._config(project, source)
-            result = CodeIndexer(config, self._store(config), Embedder(config)).index_status(project["path"])
-            return {**result, "source_id": source["id"], "owner": source["owner"], "backend": source["backend"], "mode": source["mode"]}
-        adapter, profile = self._external(project, source)
-        metadata = adapter.metadata()
-        if str(metadata.get("indexing_complete", "false")).lower() != "true":
-            return {
-                "status": "ok", "project": project["path"], "source_id": source["id"],
-                "owner": "kilo", "backend": source["backend"], "mode": "read-only",
-                "indexed": False, "metadata": {"schema": metadata.get("index_schema"), "complete": False},
-            }
-        stored = validate_profile(metadata, profile["provider"], profile["model"], int(profile["dimension"]))
-        return {
-            "status": "ok",
-            "project": project["path"],
-            "source_id": source["id"],
-            "owner": "kilo",
-            "backend": source["backend"],
-            "mode": "read-only",
-            "indexed": stored["complete"],
-            "metadata": stored,
-        }
+        project, source, config, _ = self._active(project_path)
+        result = CodeIndexer(config, self._store(config), Embedder(config)).index_status(project["path"])
+        return {**result, "source_id": source["id"], "backend": source["backend"]}
 
-    def search(self, query: str, project_path: str, top_k: int = 10, path_filter: Optional[str] = None) -> Dict[str, Any]:
+    def search(
+        self, query: str, project_path: str, top_k: int = 10, path_filter: Optional[str] = None,
+    ) -> Dict[str, Any]:
         if not query.strip():
             raise ValueError("query cannot be empty")
-        project, source = self.registry.active_source(project_path)
+        project, source, config, _ = self._active(project_path)
         requested = max(1, min(int(top_k), 20))
-        if source["owner"] == "code-index":
-            config = self._config(project, source)
-            result = CodeIndexer(config, self._store(config), Embedder(config)).semantic_search(
-                query, project["path"], requested, path_filter
-            )
-            results = result["results"]
-        else:
-            adapter, profile = self._external(project, source)
-            validate_profile(adapter.metadata(), profile["provider"], profile["model"], int(profile["dimension"]))
-            config = self._config(project, source)
-            results = adapter.search(Embedder(config).embed_query(query), requested, path_filter)
+        results = CodeIndexer(config, self._store(config), Embedder(config)).semantic_search(
+            query, project["path"], requested, path_filter
+        )["results"]
         for item in results:
-            item.update({"source_id": source["id"], "owner": source["owner"], "backend": source["backend"]})
+            item.update({"source_id": source["id"], "backend": source["backend"]})
         return {
-            "status": "ok",
-            "project": project["path"],
-            "source_id": source["id"],
-            "owner": source["owner"],
-            "backend": source["backend"],
-            "query": query,
-            "results": results,
+            "status": "ok", "project": project["path"], "source_id": source["id"],
+            "backend": source["backend"], "query": query, "results": results,
         }
-
-    def _external(self, project: Dict[str, Any], source: Dict[str, Any]):
-        profile = self._profile(source)
-        location = source.get("location") or {}
-        if source["backend"] == "qdrant":
-            adapter = KiloQdrantSource(
-                location["url"], location["collection"], get_secret(location.get("secret_ref", ""))
-            )
-        else:
-            adapter = KiloLanceDBSource(location["directory"])
-        return adapter, profile
 
     def list_sources(self, project_path: str) -> Dict[str, Any]:
         project = self.registry.project(project_path)
         return {
-            "status": "ok",
-            "project": project["path"],
+            "status": "ok", "project": project["path"],
             "active_source_id": project["active_source_id"],
             "watch_enabled": bool(project.get("watch_enabled")),
             "overrides": project.get("overrides") or {},
-            "sources": list(project["sources"].values()),
+            "sources": [self._public_source(source) for source in project["sources"].values()],
         }
-
-    def detect_kilo(self, project_path: str) -> Dict[str, Any]:
-        project = self.registry.project(project_path, create=True)
-        data = self.registry.load()
-        candidates: List[Dict[str, Any]] = []
-        url = data["defaults"]["qdrant_url"]
-        collection = kilo_qdrant_collection(project["path"])
-        try:
-            adapter = KiloQdrantSource(url, collection)
-            metadata = adapter.metadata()
-            candidates.append({
-                "id": "kilo-qdrant",
-                "owner": "kilo",
-                "backend": "qdrant",
-                "mode": "read-only",
-                "location": {"url": url, "collection": collection, "secret_ref": ""},
-                "metadata": metadata,
-            })
-        except Exception:
-            pass
-        roots = [Path(value) for value in data["defaults"].get("kilo_lancedb_roots", [])]
-        roots.extend([
-            Path.home() / ".config" / "kilo" / "lancedb",
-            Path.home() / ".cache" / "kilo" / "lancedb",
-            Path.home() / "AppData" / "Roaming" / "Code" / "User" / "globalStorage" / "kilocode.kilo-code" / "cache" / "lancedb",
-        ])
-        seen = set()
-        for root in roots:
-            directory = kilo_lancedb_directory(str(root), project["path"])
-            key = str(directory).casefold()
-            if key in seen or not directory.is_dir():
-                continue
-            seen.add(key)
-            try:
-                metadata = KiloLanceDBSource(str(directory)).metadata()
-                candidates.append({
-                    "id": f"kilo-lancedb-{len(candidates) + 1}",
-                    "owner": "kilo",
-                    "backend": "lancedb",
-                    "mode": "read-only",
-                    "location": {"directory": str(directory)},
-                    "metadata": metadata,
-                })
-            except Exception:
-                continue
-        return {"status": "ok", "project": project["path"], "candidates": candidates}
-
-    def add_source(self, project_path: str, source: Dict[str, Any], activate: bool = False) -> Dict[str, Any]:
-        project = self.registry.project(project_path)
-        if source.get("owner") != "kilo" or source.get("mode") != "read-only":
-            raise ValueError("Only read-only Kilo sources can be added manually")
-        if source.get("backend") not in {"qdrant", "lancedb"}:
-            raise ValueError("Unsupported source backend")
-        if not source.get("embedding_profile"):
-            raise ValueError("Kilo source requires an embedding_profile")
-        if activate:
-            adapter, profile = self._external(project, source)
-            validate_profile(adapter.metadata(), profile["provider"], profile["model"], int(profile["dimension"]))
-        project["sources"][source["id"]] = source
-        if activate:
-            project["active_source_id"] = source["id"]
-        self.registry.update_project(project_path, project)
-        return self.list_sources(project_path)
 
     def use_source(self, project_path: str, source_id: str) -> Dict[str, Any]:
         project = self.registry.project(project_path)
         if source_id not in project["sources"]:
             raise KeyError(f"Source does not exist: {source_id}")
         source = project["sources"][source_id]
-        if source.get("owner") == "kilo":
-            adapter, profile = self._external(project, source)
-            validate_profile(adapter.metadata(), profile["provider"], profile["model"], int(profile["dimension"]))
+        config = self._config(project, source)
+        status = CodeIndexer(config, self._store(config), Embedder(config)).index_status(project["path"])
+        metadata = status.get("metadata") or {}
+        required = {
+            "schema_version": 1, "embedding_provider": config.embedding_provider,
+            "embedding_model": config.embedding_model, "embedding_dimension": config.embedding_dimension,
+        }
+        mismatch = {key: (metadata.get(key), value) for key, value in required.items() if metadata.get(key) != value}
+        if not status.get("indexed") or not metadata.get("indexing_complete") or mismatch:
+            raise RuntimeError(f"Source validation failed: complete={metadata.get('indexing_complete')}, mismatch={mismatch}")
         project["active_source_id"] = source_id
         self.registry.update_project(project_path, project)
         return self.list_sources(project_path)
 
-    def migrate_backend(self, project_path: str, backend: str) -> Dict[str, Any]:
-        if backend not in {"qdrant", "lancedb"}:
-            raise ValueError("backend must be qdrant or lancedb")
-        project, source = self.registry.active_source(project_path)
-        if source["owner"] != "code-index":
-            raise PermissionError("External sources cannot be migrated")
-        if source["backend"] == backend:
-            return {"status": "ok", "changed": False, "active_source_id": source["id"]}
+    @staticmethod
+    def _public_profile(profile: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            key: value for key, value in profile.items() if key != "secret_ref"
+        } | {"api_key_configured": bool(profile.get("secret_ref"))}
+
+    @staticmethod
+    def _public_source(source: Dict[str, Any]) -> Dict[str, Any]:
+        result = copy.deepcopy(source)
+        location = result.get("location") or {}
+        reference = location.pop("secret_ref", "")
+        if result.get("backend") == "qdrant":
+            location["qdrant_api_key_configured"] = bool(reference)
+        return result
+
+    @staticmethod
+    def _public_settings(settings: Dict[str, Any]) -> Dict[str, Any]:
+        result = {key: value for key, value in settings.items() if key != "qdrant_secret_ref"}
+        result["qdrant_api_key_configured"] = bool(settings.get("qdrant_secret_ref"))
+        return result
+
+    def settings_state(self, project_path: Optional[str] = None) -> Dict[str, Any]:
         data = self.registry.load()
-        target = self.registry._managed_source(data, Path(project["path"]), project["project_id"], backend)
-        target["embedding_profile"] = source["embedding_profile"]
+        result: Dict[str, Any] = {
+            "status": "ok", "schema_version": data["schema_version"],
+            "defaults": self._public_settings(data["defaults"]),
+            "profiles": {key: self._public_profile(value) for key, value in data["profiles"].items()},
+        }
+        if project_path:
+            project, source = self.registry.active_source(project_path)
+            result["profiles"] = {
+                key: self._public_profile(value)
+                for key, value in data["profiles"].items()
+                if value.get("scope", "global") == "global" or value.get("project_id") == project["project_id"]
+            }
+            effective = self.registry.resolved_settings(project)
+            result["project"] = {
+                "path": project["path"], "project_id": project["project_id"],
+                "watch_enabled": bool(project.get("watch_enabled")),
+                "overrides": self._public_settings(project.get("overrides") or {}),
+                "effective": self._public_settings(effective),
+                "active_source_id": project["active_source_id"],
+                "active_source": self._public_source(source),
+                "sources": [self._public_source(item) for item in project["sources"].values()],
+            }
+            try:
+                result["project"]["index_status"] = self.status(project_path)
+            except Exception as exc:
+                result["project"]["index_status"] = {"status": "error", "error": str(exc)}
+        return result
+
+    def _desired(self, project: Dict[str, Any], payload: Dict[str, Any]) -> Dict[str, Any]:
+        desired = self.registry.resolved_settings(project)
+        defaults = self.registry.load()["defaults"]
+        for key in payload.get("clear_overrides", []):
+            if key in defaults:
+                desired[key] = defaults[key]
+        for key in PROJECT_OVERRIDE_KEYS:
+            if key in payload and payload[key] is not None:
+                desired[key] = payload[key]
+        if desired["backend"] not in {"lancedb", "qdrant"}:
+            raise ValueError("backend must be qdrant or lancedb")
+        data = self.registry.load()
+        if desired["embedding_profile"] not in data["profiles"]:
+            raise KeyError(f"Profile does not exist: {desired['embedding_profile']}")
+        if int(desired["debounce_ms"]) < 100:
+            raise ValueError("debounce_ms must be at least 100")
+        if int(desired["bulk_change_threshold"]) < 1 or int(desired["batch_size"]) < 1:
+            raise ValueError("bulk_change_threshold and batch_size must be positive")
+        if int(desired["max_file_bytes"]) < 1024:
+            raise ValueError("max_file_bytes must be at least 1024")
+        if int(desired["chunk_chars"]) < 400:
+            raise ValueError("chunk_chars must be at least 400")
+        if not 0 <= int(desired["chunk_overlap_chars"]) < int(desired["chunk_chars"]):
+            raise ValueError("chunk_overlap_chars must be smaller than chunk_chars")
+        if desired["backend"] == "qdrant" and not str(desired["qdrant_url"]).startswith(("http://", "https://")):
+            raise ValueError("qdrant_url must be an HTTP(S) URL")
+        return desired
+
+    def plan_settings(self, project_path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        project, source = self.registry.active_source(project_path)
+        desired = self._desired(project, payload)
+        location = source.get("location") or {}
+        current_root = str(Path(location.get("directory", ".")).parent) if source["backend"] == "lancedb" else ""
+        structural = []
+        if source.get("embedding_profile") != desired["embedding_profile"]:
+            structural.append("embedding_profile")
+        for key in INDEX_RECIPE_KEYS:
+            if (source.get("recipe") or {}).get(key) != desired[key]:
+                structural.append(key)
+        connection = []
+        if source["backend"] != desired["backend"]:
+            connection.append("backend")
+        elif desired["backend"] == "qdrant" and location.get("url") != desired["qdrant_url"]:
+            connection.append("qdrant_url")
+        elif desired["backend"] == "lancedb" and Path(current_root) != Path(desired["lancedb_root"]):
+            connection.append("lancedb_root")
+        impact = "reindex" if structural else "transfer" if connection else "configuration-only"
+        normalized = {
+            "project": project["path"], "desired": desired, "impact": impact,
+            "structural_changes": structural, "connection_changes": connection,
+            "replace_qdrant_key": bool(payload.get("qdrant_api_key")),
+            "clear_qdrant_key": bool(payload.get("clear_qdrant_api_key")),
+        }
+        digest = hashlib.sha256(json.dumps(normalized, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
+        public = {**normalized, "desired": self._public_settings(desired)}
+        return {"status": "ok", **public, "plan_hash": digest}
+
+    def _transfer(self, project: Dict[str, Any], source: Dict[str, Any], target: Dict[str, Any]) -> int:
         source_config = self._config(project, source)
         target_config = self._config(project, target)
-        source_store = self._store(source_config)
-        target_store = self._store(target_config)
+        source_store, target_store = self._store(source_config), self._store(target_config)
         source_store.ensure_collection()
         target_store.ensure_collection()
         repo_id = repo_identity(canonical_project(project["path"]))
         points = source_store.export_points(repo_id)
         expected = source_store.count_chunks(repo_id)
-        metadata = next((item.get("payload") or {} for item in points if (item.get("payload") or {}).get("type") == "metadata"), None)
+        metadata = next((p.get("payload") or {} for p in points if (p.get("payload") or {}).get("type") == "metadata"), None)
         if metadata is None or not metadata.get("indexing_complete"):
             raise RuntimeError("Source index has no complete metadata record")
         required = {
-            "schema_version": 1,
-            "embedding_provider": source_config.embedding_provider,
+            "schema_version": 1, "embedding_provider": source_config.embedding_provider,
             "embedding_model": source_config.embedding_model,
             "embedding_dimension": source_config.embedding_dimension,
         }
         mismatch = {key: (metadata.get(key), value) for key, value in required.items() if metadata.get(key) != value}
         if mismatch:
             raise RuntimeError(f"Source index metadata mismatch: {mismatch}")
-        rollback = target_store.export_points(repo_id)
+        target_store.delete_repo(repo_id)
+        for start in range(0, len(points), 64):
+            target_store.upsert(points[start:start + 64])
+        actual = target_store.count_chunks(repo_id)
+        copied = target_store.export_points(repo_id)
+        copied_metadata = next((p.get("payload") or {} for p in copied if (p.get("payload") or {}).get("type") == "metadata"), None)
+        if actual != expected or copied_metadata is None or any(copied_metadata.get(k) != v for k, v in required.items()):
+            target_store.delete_repo(repo_id)
+            raise RuntimeError(f"Source transfer verification failed: expected {expected}, got {actual}")
+        return actual
+
+    def apply_project_settings(self, project_path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        plan = self.plan_settings(project_path, payload)
+        if payload.get("plan_hash") != plan["plan_hash"]:
+            raise ValueError("Settings changed after planning; request a new plan")
+        project, source = self.registry.active_source(project_path)
+        desired = self._desired(project, payload)
+        updated = copy.deepcopy(project)
+        overrides = updated.setdefault("overrides", {})
+        for key in payload.get("clear_overrides", []):
+            if key in PROJECT_OVERRIDE_KEYS:
+                overrides.pop(key, None)
+        for key in PROJECT_OVERRIDE_KEYS:
+            if key in payload and payload[key] is not None:
+                overrides[key] = payload[key]
+        if "watch_enabled" in payload:
+            updated["watch_enabled"] = bool(payload["watch_enabled"])
+        if plan["impact"] == "configuration-only":
+            if desired["backend"] == "qdrant" and "qdrant_secret_ref" in desired:
+                updated["sources"][source["id"]].setdefault("location", {})["secret_ref"] = desired["qdrant_secret_ref"]
+            self.registry.update_project(project_path, updated)
+            return {"status": "ok", "impact": plan["impact"], "active_source_id": source["id"]}
+
+        source_id = f"managed-{desired['backend']}-{uuid.uuid4().hex[:8]}"
+        target = self.registry._managed_source(
+            self.registry.load(), Path(project["path"]), project["project_id"],
+            desired["backend"], source_id=source_id, settings=desired,
+        )
+        target_config = self._config(updated, target)
+        target_store = self._store(target_config)
+        repo_id = repo_identity(canonical_project(project["path"]))
         try:
-            target_store.delete_repo(repo_id)
-            for start in range(0, len(points), 64):
-                target_store.upsert(points[start : start + 64])
-            actual = target_store.count_chunks(repo_id)
-            copied = target_store.export_points(repo_id)
-            copied_metadata = next((item.get("payload") or {} for item in copied if (item.get("payload") or {}).get("type") == "metadata"), None)
-            if expected != actual or copied_metadata is None:
-                raise RuntimeError(f"Backend migration verification failed: expected {expected}, got {actual}")
-            copied_check = {key: copied_metadata.get(key) for key in required}
-            if copied_check != required:
-                raise RuntimeError(f"Backend migration metadata mismatch: {copied_check}")
+            if plan["impact"] == "transfer":
+                chunks = self._transfer(updated, source, target)
+            else:
+                indexer = CodeIndexer(target_config, target_store, Embedder(target_config))
+                result = indexer.index_project(project["path"], force=True)
+                chunks = int(result.get("chunks_total", result.get("chunks", result.get("chunk_count", 0))))
+                status = indexer.index_status(project["path"])
+                if not status.get("indexed") or not (status.get("metadata") or {}).get("indexing_complete"):
+                    raise RuntimeError("New source verification failed")
         except Exception:
-            target_store.delete_repo(repo_id)
-            for start in range(0, len(rollback), 64):
-                target_store.upsert(rollback[start : start + 64])
+            try:
+                target_store.delete_repo(repo_id)
+            except Exception:
+                pass
             raise
-        project = copy.deepcopy(project)
-        project["sources"][target["id"]] = target
-        project["active_source_id"] = target["id"]
-        self.registry.update_project(project_path, project)
+        updated["sources"][target["id"]] = target
+        updated["active_source_id"] = target["id"]
+        self.registry.update_project(project_path, updated)
         return {
-            "status": "ok",
-            "changed": True,
-            "from": source["id"],
-            "to": target["id"],
-            "chunks": actual,
-            "source_retained": True,
+            "status": "ok", "impact": plan["impact"], "from": source["id"],
+            "to": target["id"], "chunks": chunks, "source_retained": True,
         }
+
+    def migrate_backend(self, project_path: str, backend: str) -> Dict[str, Any]:
+        project, source = self.registry.active_source(project_path)
+        if source["backend"] == backend:
+            return {"status": "ok", "changed": False, "active_source_id": source["id"]}
+        payload = {"backend": backend}
+        plan = self.plan_settings(project_path, payload)
+        result = self.apply_project_settings(project_path, {**payload, "plan_hash": plan["plan_hash"]})
+        return {**result, "changed": True}

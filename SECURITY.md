@@ -8,5 +8,5 @@
 через `keyring`. Сообщения об уязвимостях не должны включать реальные credentials
 или private payload из Qdrant/LanceDB.
 
-Kilo Code adapters являются read-only. Изменение внешнего индекса или добавление
-mutating MCP tools считается security regression.
+Code Index изменяет только созданные им managed sources. Изменение неизвестного
+внешнего индекса или добавление mutating MCP tools считается security regression.

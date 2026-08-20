@@ -15,9 +15,7 @@ Code Index CLI / VS Code watcher
       ▼
 один активный source проекта
   ├─ managed LanceDB
-  ├─ managed Qdrant
-  ├─ external Kilo LanceDB (read-only)
-  └─ external Kilo Qdrant (read-only)
+  └─ managed Qdrant
       │
       ▼
 read-only MCP gateway
@@ -31,8 +29,8 @@ Codex plugin: semantic → rg → AST → чтение
 ### Code Index
 
 Единственный владелец индексации. Registry связывает абсолютный путь проекта с
-`project_id`, набором sources и одним `active_source_id`. Для managed source Code
-Index создаёт и обновляет индекс; external Kilo source только читает.
+`project_id`, набором managed sources и одним `active_source_id`. Code Index
+создаёт, обновляет и безопасно переключает эти sources.
 
 `project_id` — первые 16 символов SHA‑256 нормализованного абсолютного пути.
 Поэтому одинаковое имя папки в разных местах получает разные индексы.
@@ -47,7 +45,7 @@ host.
 ### MCP gateway
 
 Стабильная read-only граница между хранилищем и агентом. Клиент не должен знать,
-какой backend активен. Контракт одинаков для LanceDB, Qdrant и Kilo.
+какой backend активен. Контракт одинаков для LanceDB и Qdrant.
 
 ### Codex plugin
 
@@ -97,7 +95,6 @@ embedding provider/model/dimension. `indexing_complete=false` означает, 
 ## Границы доверия
 
 - managed source: чтение и запись принадлежат Code Index;
-- Kilo source: только чтение, lifecycle принадлежит Kilo Code;
 - MCP: только чтение;
 - Codex skill: не запускает индексацию;
 - secrets: Windows Credential Manager, в JSON только ссылки.

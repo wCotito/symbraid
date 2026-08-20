@@ -43,12 +43,12 @@ watcher. После установки откройте новую сессию 
 - `top_k` — 10 по умолчанию, максимум 20;
 - `path_filter` — необязательное ограничение подсистемы.
 
-Возвращает только active source проекта и включает `source_id`, `owner`, `backend`,
+Возвращает только active managed source проекта и включает `source_id`, `backend`,
 score, path, symbol/kind, строки, preview и hashes.
 
 ### index_status
 
-Возвращает backend, ownership, completeness и metadata активного source.
+Возвращает backend, completeness и metadata активного source.
 
 ### list_index_sources
 

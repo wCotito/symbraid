@@ -62,7 +62,8 @@ if (-not $SkipExtension) {
     try {
         & npm.cmd ci --ignore-scripts
         & npm.cmd test
-        $vsix = Join-Path $runtimeRoot 'ada-b.code-index-0.1.0.vsix'
+        $extensionVersion = (Get-Content -Raw (Join-Path $extensionRoot 'package.json') | ConvertFrom-Json).version
+        $vsix = Join-Path $runtimeRoot "ada-b.code-index-$extensionVersion.vsix"
         & npx.cmd vsce package --no-dependencies --allow-missing-repository -o $vsix
         & code.cmd --install-extension $vsix --force
     } finally { Pop-Location }

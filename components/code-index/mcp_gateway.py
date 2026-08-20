@@ -23,7 +23,7 @@ def semantic_search(query: str, project_path: str, top_k: int = 10, path_filter:
 
 @mcp.tool()
 def index_status(project_path: str) -> dict:
-    """Return active source, backend, ownership, completeness, and index metadata."""
+    """Return the active managed source, backend, completeness, and index metadata."""
     return CodeIndexService().status(project_path)
 
 

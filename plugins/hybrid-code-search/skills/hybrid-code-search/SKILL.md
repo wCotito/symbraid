@@ -5,7 +5,7 @@ description: Use read-only semantic code search plus exact and AST verification.
 
 # Hybrid Code Search
 
-Use the active source selected by the independent Code Index application for discovery, then prove every result against the current checkout. The source may be managed LanceDB/Qdrant or a read-only Kilo Code index.
+Use the active managed LanceDB or Qdrant source selected by the independent Code Index application for discovery, then prove every result against the current checkout.
 
 ## Route the request
 
@@ -33,7 +33,6 @@ Use the active source selected by the independent Code Index application for dis
 - Prefer a path filter when the subsystem is known.
 - Never call mutating index tools: this MCP intentionally exposes only `semantic_search`, `index_status`, and `list_index_sources`.
 - Code Index and its VS Code extension own indexing and watcher lifecycle. This skill does not assume the watcher is active.
-- Treat Kilo Code sources as external and strictly read-only.
 - Do not use semantic search to enumerate every occurrence; use `rg` or AST search.
 
 ## Failure handling

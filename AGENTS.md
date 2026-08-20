@@ -19,14 +19,13 @@ Codex plugin. Не вносить изменения в установленны
    или изменять индекс.
 2. MCP plugin предоставляет только `semantic_search`, `index_status` и
    `list_index_sources`.
-3. Kilo Code adapters строго read-only.
-4. Один проект имеет один активный source; смешивание результатов запрещено.
-5. Перед переключением backend проверяются schema, provider, model, dimension и
+3. Один проект имеет один активный managed source; смешивание результатов запрещено.
+4. Перед переключением backend проверяются schema, provider, model, dimension и
    count; исходный индекс сохраняется для rollback.
-6. Секреты принимаются только через stdin и сохраняются в Windows Credential
+5. Секреты принимаются только через stdin и сохраняются в Windows Credential
    Manager. Не логировать ключи и не добавлять их в CLI arguments/config/tests.
-7. Watcher живёт только в extension host открытого VS Code workspace.
-8. Никогда не изменять и не удалять старые/внешние коллекции без отдельного
+6. Watcher живёт только в extension host открытого VS Code workspace.
+7. Никогда не изменять и не удалять старые/внешние коллекции без отдельного
    явного разрешения пользователя.
 
 ## Порядок изменения и развёртывания

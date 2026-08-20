@@ -17,7 +17,7 @@ $codeIndex = "$env:LOCALAPPDATA\CodeIndex\bin\code-index.cmd"
 - `mcp_gateway.py` — MCP stdio server;
 - `code_index/indexer.py` — chunking и incremental refresh;
 - `code_index/service.py` — orchestration и active source;
-- `code_index/lancedb_store.py`, `qdrant.py`, `kilo.py` — stores/adapters.
+- `code_index/lancedb_store.py`, `qdrant.py` — managed stores.
 
 Не запускайте этот каталог как отдельную установку. Используйте корневой
 `scripts/install-windows.ps1`, чтобы runtime и остальные компоненты оставались

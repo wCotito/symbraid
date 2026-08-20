@@ -111,16 +111,9 @@ $plain = $null
 `migrate-backend` переносит существующие vectors без пересчёта и поэтому не
 предназначен для смены embedding model или dimension.
 
-## Профиль для Kilo Code
-
-Code Index не использует credentials Kilo. Создайте отдельный профиль с теми же
-provider/model/dimension, которые записаны в metadata Kilo, и задайте собственный
-ключ для query embeddings. Несовпадающий профиль не активируется.
-
 ## Типовые ошибки
 
 - `Embedding dimension mismatch` — неверный `--dimension` или endpoint вернул
   другую модель;
 - `Embedding endpoint failed` — URL, TLS, proxy, authentication или сервер;
-- модель FastEmbed не найдена — неверный model ID либо модель не поддерживается;
-- Kilo profile mismatch — профиль Code Index не идентичен metadata Kilo.
+- модель FastEmbed не найдена — неверный model ID либо модель не поддерживается.
