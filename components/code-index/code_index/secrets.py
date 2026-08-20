@@ -18,4 +18,3 @@ def set_secret(reference: str, value: str) -> None:
     import keyring
 
     keyring.set_password(SERVICE, reference, value)
-
