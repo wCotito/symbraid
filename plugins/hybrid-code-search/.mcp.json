@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "hybrid-code-search": {
+      "command": "cmd.exe",
+      "args": [
+        "/d",
+        "/s",
+        "/c",
+        "%LOCALAPPDATA%\\CodeIndex\\bin\\code-index-mcp.cmd"
+      ]
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "code-index",
+  "displayName": "Code Index",
+  "description": "Workspace-scoped semantic code indexing for LanceDB and Qdrant.",
+  "version": "0.1.0",
+  "publisher": "ada-b",
+  "license": "MIT",
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["Other", "Machine Learning"],
+  "activationEvents": ["onStartupFinished", "onCommand:codeIndex.manage"],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "codeIndex.manage", "title": "Code Index: Manage" },
+      { "command": "codeIndex.toggle", "title": "Code Index: Toggle Watcher" },
+      { "command": "codeIndex.index", "title": "Code Index: Reconcile Now" }
+    ]
+  },
+  "scripts": {
+    "test": "node test/core.test.js",
+    "package": "vsce package --no-dependencies"
+  },
+  "devDependencies": { "@vscode/vsce": "^3.6.0" }
+}
