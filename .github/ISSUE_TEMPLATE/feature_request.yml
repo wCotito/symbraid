@@ -1,0 +1,38 @@
+name: Feature request
+description: Propose a focused, maintainable improvement
+title: "[feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Please describe the user problem and constraints. Do not include
+        credentials, private source text, or other sensitive data.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Who is affected, and what is difficult today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+      description: Explain the smallest useful interface and its trade-offs.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Project boundaries
+      options:
+        - label: This proposal keeps indexing and ownership in the Symbraid core.
+          required: true
+        - label: This proposal does not require publishing credentials or private data.
+          required: true

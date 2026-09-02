@@ -1,0 +1,145 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  documentation:
+    name: Documentation, links, package, and benchmark plan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check mirrored documentation and links
+        run: python scripts/sync_docs.py --check
+      - name: Check version consistency
+        run: python scripts/check_versions.py
+      - name: Check benchmark dry-run
+        run: python benchmarks/run.py --dry-run
+      - name: Compile repository harnesses
+        run: python -m py_compile scripts/sync_docs.py scripts/check_versions.py benchmarks/run.py benchmarks/download_codesearchnet.py
+      - name: Build Python wheel and sdist
+        run: |
+          python -m pip install --upgrade build
+          python -m build components/symbraid --outdir dist/documentation-smoke
+
+  mcp-registry:
+    name: MCP Registry manifest validation (no publish)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download pinned mcp-publisher
+        env:
+          MCP_PUBLISHER_VERSION: v1.7.9
+          MCP_PUBLISHER_SHA256: ab128162b0616090b47cf245afe0a23f3ef08936fdce19074f5ba0a4469281ac
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/mcp-publisher_linux_amd64.tar.gz"
+          curl --fail --location --retry 3 --silent --show-error \
+            --output "$archive" \
+            "https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          printf '%s  %s\n' "$MCP_PUBLISHER_SHA256" "$archive" | sha256sum --check --status
+          tar -xzf "$archive" -C "$RUNNER_TEMP" mcp-publisher
+          chmod 0755 "$RUNNER_TEMP/mcp-publisher"
+          "$RUNNER_TEMP/mcp-publisher" --version
+      - name: Validate server.json (no login or publish)
+        run: "$RUNNER_TEMP/mcp-publisher validate server.json"
+
+  core:
+    name: Core (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+        python:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install core and test dependencies (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".\components\symbraid[dev]"
+      - name: Install core and test dependencies (POSIX)
+        if: runner.os != 'Windows'
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "./components/symbraid[dev]"
+      - name: Run real MCP stdio handshake
+        run: python scripts/verify_mcp.py
+      - name: Run core and LanceDB contract tests
+        run: python -m unittest discover -s components/symbraid/tests -p "test_*.py"
+      - name: MCP read-only conformance check
+        run: python -c "from pathlib import Path; s=Path('components/symbraid/src/symbraid/mcp_server.py').read_text(encoding='utf-8'); assert s.count('@server.tool()') == 3; assert not any(('def '+n) in s for n in ('index_project','refresh_files','remove_project'))"
+      - name: Check version consistency
+        run: python scripts/check_versions.py
+      - name: Build Python wheel and sdist
+        run: python -m build components/symbraid --outdir dist/core
+
+  qdrant:
+    name: Qdrant integration (Ubuntu)
+    runs-on: ubuntu-latest
+    services:
+      qdrant:
+        image: qdrant/qdrant:v1.14.1
+        ports:
+          - 18133:6333
+        options: >-
+          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:6333/readyz || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install core and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "./components/symbraid[dev]"
+      - name: Run Qdrant and core integration tests
+        env:
+          SYMBRAID_QDRANT_URL: http://127.0.0.1:18133
+        run: python -m unittest discover -s components/symbraid/tests -p "test_*.py"
+
+  vscode:
+    name: VS Code extension checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: extensions/vscode-symbraid/package-lock.json
+      - name: Install extension dependencies
+        run: npm ci --prefix extensions/vscode-symbraid
+      - name: Check extension JavaScript
+        run: |
+          node --check extensions/vscode-symbraid/extension.js
+          node --check extensions/vscode-symbraid/managePanel.js
+          node --check extensions/vscode-symbraid/media/manage.js
+      - name: Run extension tests
+        run: npm test --prefix extensions/vscode-symbraid
+      - name: Build VSIX without publishing
+        run: npm run package --prefix extensions/vscode-symbraid
