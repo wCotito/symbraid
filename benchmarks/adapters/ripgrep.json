@@ -1,0 +1,16 @@
+{
+  "id": "ripgrep-lexical-control",
+  "display_name": "ripgrep lexical control",
+  "executable": "rg",
+  "available_by_default": true,
+  "supports_controlled": true,
+  "allow_no_match_exit": true,
+  "allowed_exit_codes": [0, 1],
+  "result_format": "paths",
+  "query_field": "lexical_regex",
+  "setup": "Use the pinned ripgrep release from competitors.json; no index or network is required.",
+  "search_command": ["--files-with-matches", "--no-messages", "--ignore-case", "{query}", "{fixture}"],
+  "version_command": ["--version"],
+  "notes": "Lexical control; it is not a semantic index and is reported as a separate baseline."
+}
+

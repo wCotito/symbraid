@@ -1,0 +1,12 @@
+{
+  "id": "symbraid",
+  "display_name": "Symbraid",
+  "executable": "symbraid",
+  "available_by_default": false,
+  "supports_controlled": true,
+  "result_format": "json",
+  "setup": "Install the local checkout and index the fixture with the documented core CLI.",
+  "search_command": ["search", "{fixture}", "{query}", "--top-k", "{k}"],
+  "version_command": ["--version"],
+  "notes": "The executable is intentionally not invoked during a dry run."
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "fixture": "benchmarks/fixture",
+  "queries": "benchmarks/config/queries.jsonl",
+  "competitors": "benchmarks/competitors.json",
+  "external_corpus_manifest": "benchmarks/external/codesearchnet-manifest.json",
+  "adapters": "benchmarks/adapters",
+  "modes": [
+    "out-of-box",
+    "controlled"
+  ],
+  "k": [
+    1,
+    3,
+    5,
+    10
+  ],
+  "repetitions": 5,
+  "warm_repeats": 5,
+  "seed": 20260902,
+  "network": false,
+  "output_dir": "benchmarks/results",
+  "primary_quality_metrics": ["ndcg@10", "mrr@10", "recall@1", "recall@5", "recall@10", "precision@5", "precision@10", "file_recall", "context_efficiency"],
+  "performance_metrics": ["warm_query_latency_ms", "cold_index_wall_ms", "cold_index_cpu_ms", "files_per_second", "loc_per_second", "peak_rss_bytes", "disk_bytes_per_chunk", "startup_ms", "incremental_convergence_ms", "idle_memory_bytes", "response_size_bytes"],
+  "notes": "The default runner is a dry plan. Actual commands require --execute and remain the operator's responsibility."
+}

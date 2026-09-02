@@ -1,0 +1,12 @@
+{
+  "id": "codanna",
+  "display_name": "Codanna",
+  "executable": "codanna",
+  "available_by_default": false,
+  "supports_controlled": false,
+  "result_format": "json",
+  "setup": "Install the pinned release listed in competitors.json and index the fixture using its documented command.",
+  "search_command": ["search", "{query}", "--path", "{fixture}", "--limit", "{k}"],
+  "version_command": ["--version"],
+  "notes": "Controlled provider/model is not assumed; report not_comparable unless verified."
+}

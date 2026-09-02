@@ -1,0 +1,11 @@
+{
+  "application": {
+    "endpoint": "https://example.invalid",
+    "timeout_seconds": 30,
+    "feature_flags": {
+      "semantic_search": true,
+      "destructive_actions": false
+    }
+  }
+}
+

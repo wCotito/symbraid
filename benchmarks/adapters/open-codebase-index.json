@@ -1,0 +1,12 @@
+{
+  "id": "open-codebase-index",
+  "display_name": "open-codebase-index",
+  "executable": "open-codebase-index",
+  "available_by_default": false,
+  "supports_controlled": false,
+  "result_format": "json",
+  "setup": "Install the pinned release listed in competitors.json and build its local index for the fixture.",
+  "search_command": ["search", "--root", "{fixture}", "--query", "{query}", "--limit", "{k}"],
+  "version_command": ["--version"],
+  "notes": "Verify the executable name and output schema against the pinned release before execution."
+}

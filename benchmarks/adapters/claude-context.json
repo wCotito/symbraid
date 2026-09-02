@@ -1,0 +1,14 @@
+{
+  "id": "claude-context",
+  "display_name": "Claude Context",
+  "executable": "claude-context",
+  "version": "0.1.11",
+  "commit": "dec2aeca3101a2b301a9b104eab48a533e555ce4",
+  "available_by_default": false,
+  "supports_controlled": false,
+  "result_format": "json",
+  "setup": "Review a read-only adapter and local fixture setup first; the documented integration includes mutating index tools.",
+  "search_command": ["search", "--root", "{fixture}", "--query", "{query}", "--top-k", "{k}"],
+  "version_command": ["--version"],
+  "notes": "Runs are not comparable until setup, transport, index ownership, and version are pinned."
+}

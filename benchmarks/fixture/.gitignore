@@ -1,0 +1,6 @@
+# Adapters must ignore local build/dependency paths when indexing the fixture.
+.cache/
+ignored/
+node_modules/
+vendor/
+

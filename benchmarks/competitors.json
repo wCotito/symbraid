@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-09-02",
+  "purpose": "Version and license provenance for the reproducible benchmark harness; not a performance ranking.",
+  "entries": [
+    {
+      "id": "symbraid",
+      "display_name": "Symbraid",
+      "version": "working-tree",
+      "license": "MIT",
+      "source_url": "https://github.com/symbraid-project/symbraid",
+      "version_source": "local checkout under test",
+      "adapter": "adapters/symbraid.json",
+      "notes": "Record the exact commit before a public run."
+    },
+    {
+      "id": "codanna",
+      "display_name": "Codanna",
+      "version": "0.12.0",
+      "license": "Apache-2.0",
+      "source_url": "https://github.com/bartolli/codanna",
+      "version_source": "latest release observed 2026-07-26",
+      "adapter": "adapters/codanna.json",
+      "notes": "Re-check the release and platform support before publishing a report."
+    },
+    {
+      "id": "open-codebase-index",
+      "display_name": "open-codebase-index",
+      "version": "0.23.0",
+      "license": "MIT",
+      "source_url": "https://github.com/Helweg/open-codebase-index",
+      "version_source": "latest surfaced release observed 2026-08-11",
+      "adapter": "adapters/open-codebase-index.json",
+      "notes": "Re-check the release before a public run."
+    },
+    {
+      "id": "ripgrep-lexical-control",
+      "display_name": "ripgrep lexical control",
+      "version": "14.1.0",
+      "license": "MIT OR Unlicense",
+      "source_url": "https://github.com/BurntSushi/ripgrep/tree/14.1.0",
+      "version_source": "pinned tag 14.1.0",
+      "adapter": "adapters/ripgrep.json",
+      "notes": "Lexical control baseline; no semantic ranking is claimed."
+    },
+    {
+      "id": "claude-context",
+      "display_name": "Claude Context",
+      "version": "0.1.11",
+      "license": "MIT",
+      "source_url": "https://github.com/zilliztech/claude-context/tree/v0.1.11",
+      "version_source": "pinned tag v0.1.11 (commit dec2aeca3101a2b301a9b104eab48a533e555ce4)",
+      "adapter": "adapters/claude-context.json",
+      "notes": "Pinned for provenance, but benchmark execution is blocked until a read-only adapter is reviewed because the documented setup exposes mutating indexing tools."
+    }
+  ]
+}
