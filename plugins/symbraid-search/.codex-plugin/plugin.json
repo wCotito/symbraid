@@ -1,0 +1,30 @@
+{
+  "name": "symbraid-search",
+  "version": "0.3.0+codex.20260902131209",
+  "description": "Read-only semantic search through Symbraid with exact and AST verification workflows.",
+  "author": {
+    "name": "Symbraid Contributors"
+  },
+  "license": "MIT",
+  "keywords": [
+    "code-search",
+    "embeddings",
+    "mcp"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Symbraid Search",
+    "shortDescription": "Host-neutral semantic and verified code search.",
+    "longDescription": "Queries the active Symbraid source through a stable read-only MCP contract, and requires exact and AST verification before edits.",
+    "developerName": "Symbraid Contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Read"
+    ],
+    "defaultPrompt": [
+      "Find the implementation by meaning and verify it.",
+      "Show Symbraid status and available sources for this project."
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}

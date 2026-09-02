@@ -5,6 +5,18 @@
   },
   "plugins": [
     {
+      "name": "symbraid-search",
+      "source": {
+        "source": "local",
+        "path": "./plugins/symbraid-search"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "hybrid-code-search",
       "source": {
         "source": "local",

@@ -1,7 +1,7 @@
 interface:
-  display_name: "Hybrid Code Search (Deprecated)"
-  short_description: "Compatibility alias for host-neutral Symbraid search"
-  default_prompt: "Use $hybrid-code-search only for compatibility; prefer $symbraid-search."
+  display_name: "Symbraid Search"
+  short_description: "Host-neutral semantic and verified code search"
+  default_prompt: "Use $symbraid-search to locate code semantically and verify it before making changes."
 dependencies:
   tools:
     - type: "mcp"

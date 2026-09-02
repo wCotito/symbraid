@@ -1,26 +1,19 @@
-# Codex plugin `hybrid-code-search`
+# Deprecated Codex plugin alias: hybrid-code-search
 
-Тонкий read-only плагин для Codex. Он запускает установленный
-`%LOCALAPPDATA%\CodeIndex\bin\code-index-mcp.cmd` и добавляет skill, который
-задаёт безопасный порядок поиска:
+This thin, read-only plugin remains for compatibility until the Symbraid 2.0
+release. It forwards the historical name to the host-neutral command
+symbraid mcp --transport stdio; it contains no indexer, watcher, or backend
+logic.
 
-```text
-semantic search → rg → AST/symbol search → чтение текущего файла
-```
+Use symbraid-search for new installations and prompts:
 
-В плагине намеренно отсутствуют индексатор, embedding provider, watcher и
-драйверы баз. Если Code Index или активный source недоступен, агент сообщает
-причину и продолжает ограниченным `rg`/AST поиском.
+    codex plugin add symbraid-search@semantic-code-index-kit
 
-Установка из корня монорепозитория:
+Documentation:
 
-```powershell
-codex plugin marketplace add .
-codex plugin add hybrid-code-search@semantic-code-index-kit
-```
+- [English Codex integration](../../docs/en/integrations/codex.md)
+- [Russian Codex integration](../../docs/ru/integrations/codex.md)
 
-После установки откройте новую сессию Codex: MCP и skills загружаются при старте
-сессии. Сначала должно быть установлено приложение Code Index корневым
-`scripts/install-windows.ps1`.
-
-Подробнее: `../../docs/ru/codex-plugin.md`.
+The alias and canonical plugin use the MCP server
+io.github.symbraid-project/symbraid. Start a new Codex session after changing
+plugins.

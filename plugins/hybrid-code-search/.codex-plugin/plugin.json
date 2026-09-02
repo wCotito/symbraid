@@ -1,29 +1,30 @@
 {
   "name": "hybrid-code-search",
-  "version": "0.1.0+codex.20260820071107",
-  "description": "Read-only semantic search through Code Index with exact and AST verification workflows.",
+  "version": "0.3.0+codex.20260902131209",
+  "description": "Deprecated compatibility alias for the Symbraid Search plugin.",
   "author": {
-    "name": "ADA-B"
+    "name": "Symbraid Contributors"
   },
   "license": "MIT",
   "keywords": [
     "code-search",
-    "embeddings",
+    "deprecated",
+    "symbraid",
     "mcp"
   ],
   "skills": "./skills/",
   "interface": {
-    "displayName": "Hybrid Code Search",
-    "shortDescription": "Independent semantic and verified code search.",
-    "longDescription": "Queries the active Code Index source through a stable read-only MCP contract, and requires exact and AST verification before edits.",
-    "developerName": "ADA-B",
+    "displayName": "Hybrid Code Search (Deprecated)",
+    "shortDescription": "Compatibility alias for host-neutral Symbraid search.",
+    "longDescription": "Keeps existing hybrid-code-search installations working through the Symbraid MCP server until the 2.0 release.",
+    "developerName": "Symbraid Contributors",
     "category": "Productivity",
     "capabilities": [
       "Read"
     ],
     "defaultPrompt": [
-      "Find the implementation by meaning and verify it.",
-      "Show semantic index status and available sources for this project."
+      "Use the deprecated compatibility search alias.",
+      "Prefer the Symbraid Search plugin for new work."
     ]
   },
   "mcpServers": "./.mcp.json"
