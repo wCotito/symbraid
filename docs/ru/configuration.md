@@ -1,100 +1,52 @@
-# Конфигурация
+# Конфигурация и секреты
 
-## Где хранится
+## Расположение
 
-Registry находится в `%LOCALAPPDATA%\CodeIndex\config.json`. Конфигурация не
-записывается в индексируемые репозитории. API keys находятся в Windows Credential
-Manager; JSON содержит только `secret_ref`.
+Конфигурация хранится вне индексируемых репозиториев. Если не задана
+SYMBRAID_CONFIG, используются:
 
-Текущая schema — v2. При первом чтении v1 создаётся `config.json.v1.bak`, затем
-legacy external source references удаляются из registry без изменения физических
-Qdrant collections или LanceDB directories.
+- Windows: %LOCALAPPDATA%\Symbraid\config.json;
+- Linux: $XDG_CONFIG_HOME или $HOME/.config/symbraid/config.json.
 
-Основные разделы:
+Indexes, locks и model cache используют platform data directories. Точные пути
+выводит команда symbraid paths и они не коммитятся.
 
-```json
-{
-  "schema_version": 2,
-  "defaults": {},
-  "profiles": {},
-  "projects": {}
-}
-```
+Registry хранит только secret_ref. В интерактивной установке используется OS
+keyring. Для headless Linux можно явно включить ссылку env://SYMBRAID_EMBEDDING_KEY;
+значение читается во время запуска и не попадает в JSON или logs.
 
-Не рекомендуется редактировать файл вручную: используйте CLI или `Code Index:
-Manage`. Запись выполняется атомарно через временный файл.
+## Defaults и project overrides
 
-## Defaults
+~~~text
+symbraid defaults show
+symbraid defaults set --backend lancedb
+symbraid project override /absolute/project --debounce-ms 2000
+symbraid project override /absolute/project --embedding-profile local-code
+~~~
 
-Во всех примерах ниже используется установленный launcher:
+Основные настройки: backend (lancedb или qdrant), embedding_profile, URL и
+secret_ref Qdrant, local store root, debounce/bulk thresholds, max file size,
+chunk size/overlap/batch size и путь к rg.
 
-```powershell
-$codeIndex = "$env:LOCALAPPDATA\CodeIndex\bin\code-index.cmd"
-```
+Project config хранит normalized path, project_id, состояние watcher, managed
+sources и один active_source_id, а также только отличия от defaults.
 
-- `backend`: `lancedb` или `qdrant`;
-- `embedding_profile`: профиль для новых managed sources;
-- `qdrant_url`, `qdrant_secret_ref`;
-- `lancedb_root`;
-- `debounce_ms`, `bulk_change_threshold`;
-- `max_file_bytes`;
-- `chunk_chars`, `chunk_overlap_chars`, `batch_size`;
-- `rg_path`.
+## Безопасный ввод ключа
 
-Показать defaults:
+Передавайте ключ через stdin, чтобы core сохранил его в OS keyring:
 
-```powershell
-& $codeIndex defaults show
-```
+~~~powershell
+Read-Host 'Embedding API key' -AsSecureString |
+  symbraid profile set remote-code --api-key-stdin
+~~~
 
-Изменить backend для новых проектов:
+Не помещайте secrets в shell history, process arguments, tests, reports или
+config.json. Перед сменой provider запустите profile test и проверьте dimension.
+Новый provider/model/dimension создаёт новый managed source.
 
-```powershell
-& $codeIndex defaults set --backend lancedb
-```
+## Locks и безопасность
 
-Настроить Qdrant:
-
-```powershell
-& $codeIndex defaults set --qdrant-url http://127.0.0.1:18133
-Get-Content .\qdrant-key.txt -Raw |
-  & $codeIndex defaults set --qdrant-api-key-stdin
-```
-
-После команды безопасно удалите временный файл с ключом. Предпочтительнее передать
-секрет из password manager непосредственно в stdin.
-
-## Project overrides
-
-Проект хранит только отличия от defaults:
-
-```powershell
-& $codeIndex project override C:\repo --debounce-ms 2500 --bulk-change-threshold 200
-& $codeIndex project override C:\repo --embedding-profile company-code
-& $codeIndex project override C:\repo --clear-embedding-profile
-```
-
-Каждый проект имеет:
-
-- нормализованный path и `project_id`;
-- `watch_enabled`;
-- `overrides`;
-- словарь `sources`;
-- один `active_source_id`.
-
-Через `Code Index: Manage` проект может переопределить backend, embedding profile,
-Qdrant URL/key, LanceDB root, watcher и tuning. Изменения модели/chunking создают
-новый source с полной переиндексацией; изменение backend/location переносит vectors.
-В обоих случаях старый source сохраняется.
-
-## Managed source
-
-Code Index может записывать managed source. Для Qdrant создаётся collection
-`code-index-<project_id>`. Для LanceDB создаётся directory
-`<project-name>-<project_id>` с таблицами `vector` и `metadata`.
-
-## Locks
-
-Операции записи используют lock в `%LOCALAPPDATA%\CodeIndex\locks`. Одновременные
-watcher, CLI index и migration не могут изменять один project index параллельно.
-`status` и `search` остаются read-only.
+Watcher, index, refresh и migration используют lock проекта и не меняют его
+параллельно. status и search read-only. Symbraid изменяет только созданные им
+managed sources и не трогает неизвестные Qdrant collections или внешние LanceDB
+directories без отдельного подтверждения.

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "canonical_locale": "en",
+  "locales": [
+    "en",
+    "ru"
+  ],
+  "docs_root": "docs",
+  "manifest": "docs/translation-manifest.json",
+  "markdown_glob": "**/*.md",
+  "generated_by": "scripts/sync_docs.py"
+}

@@ -1,107 +1,69 @@
 # CLI
 
-После установки launcher находится здесь:
+CLI core — граница автоматизации. Команды печатают structured JSON в stdout, а
+ошибки — в stderr с ненулевым exit code.
 
-```powershell
-$codeIndex = "$env:LOCALAPPDATA\CodeIndex\bin\code-index.cmd"
-& $codeIndex --help
-```
+~~~text
+symbraid --help
+symbraid paths
+~~~
 
-Все команды возвращают JSON в stdout. Ошибки возвращают JSON в stderr и ненулевой
-exit code. Это позволяет безопасно вызывать CLI из VS Code и автоматизации.
+## Проекты и sources
 
-## Settings API
+~~~text
+symbraid project register /absolute/project
+symbraid project list
+symbraid project watch /absolute/project on
+symbraid source list /absolute/project
+symbraid source use /absolute/project managed-lancedb
+~~~
 
-```powershell
-& $codeIndex settings show --project C:\repo
-'{"backend":"qdrant"}' | & $codeIndex settings plan C:\repo
-'{"backend":"qdrant","plan_hash":"..."}' | & $codeIndex settings apply-project C:\repo
-'{"backend":"lancedb"}' | & $codeIndex settings apply-defaults
-```
+project remove по умолчанию удаляет только registry metadata; physical managed
+index сохраняется. У проекта ровно один active managed source.
 
-Payload передаётся только через stdin. `settings plan` возвращает impact
-`configuration-only`, `transfer` или `reindex`; apply отклоняет устаревший
-`plan_hash`. Для проверки доступны `settings test-backend` и
-`profile test-config`, также принимающие JSON через stdin.
+## Settings и profiles
 
-## Проекты
+~~~text
+symbraid settings show --project /absolute/project
+printf '{"backend":"qdrant"}' | symbraid settings plan /absolute/project
+symbraid defaults show
+symbraid profile list
+symbraid profile test local-code
+~~~
 
-```powershell
-& $codeIndex project register C:\repo
-& $codeIndex project list
-& $codeIndex project watch C:\repo on
-& $codeIndex project watch C:\repo off
-& $codeIndex project override C:\repo --debounce-ms 2000
-& $codeIndex project remove C:\repo
-```
+Payload settings и secret values принимаются через stdin. settings plan возвращает
+configuration-only, transfer или reindex; старый plan hash отклоняется.
 
-`project remove` удаляет запись registry, но сохраняет физический индекс.
+## Indexing и search
 
-## Sources
+~~~text
+symbraid index /absolute/project
+symbraid index /absolute/project --force
+symbraid refresh /absolute/project src/auth/session.py
+symbraid status /absolute/project
+symbraid search /absolute/project "where are access tokens renewed" --top-k 10
+~~~
 
-```powershell
-& $codeIndex source list C:\repo
-& $codeIndex source use C:\repo managed-lancedb
-```
+index пересчитывает изменённые files, --force — все chunks. После branch switch
+или изменения ignore rules используйте full reconcile. Search result проверяйте
+по текущему файлу до edits.
 
-Все sources являются managed. Переключение разрешено только после проверки
-metadata/profile/count; предыдущий source сохраняется для rollback.
+## Backend migration
 
-## Embedding profiles
+~~~text
+symbraid migrate-backend /absolute/project qdrant
+symbraid migrate-backend /absolute/project lancedb
+~~~
 
-```powershell
-& $codeIndex profile list
-& $codeIndex profile set local-code --provider fastembed --model MODEL --dimension 768
-& $codeIndex profile set remote-code --provider openai-compatible `
-  --model MODEL --dimension 1024 --base-url https://host/v1
-$key | & $codeIndex profile set remote-code ... --api-key-stdin
-& $codeIndex profile test remote-code
-```
-
-Подробности: [embeddings.md](embeddings.md).
-
-## Индексация
-
-```powershell
-& $codeIndex index C:\repo
-& $codeIndex index C:\repo --force
-& $codeIndex refresh C:\repo src\a.py src\b.ts
-& $codeIndex status C:\repo
-```
-
-- `index` делает reconcile всего проекта, но пересчитывает только изменённые файлы;
-- `--force` пересчитывает все chunks;
-- `refresh` предназначен для небольшого списка изменённых/удалённых файлов;
-- после branch switch или изменения `.gitignore` используйте `index`.
-
-## Поиск
-
-```powershell
-& $codeIndex search C:\repo "где обновляется access token" --top-k 10
-& $codeIndex search C:\repo "валидация платежа" --path-filter "src/payments"
-```
-
-`top_k` ограничивается диапазоном 1–20. Результат содержит source/backend,
-score, path, symbol/kind, строки, preview и hashes. Перед изменением файла результат
-нужно проверить через `rg`, AST и чтение исходника.
-
-## Миграция backend
-
-```powershell
-& $codeIndex migrate-backend C:\repo qdrant
-& $codeIndex migrate-backend C:\repo lancedb
-```
-
-Миграция доступна только для managed source и не пересчитывает embedding. При
-несовместимой metadata/count переключение не выполняется.
+Vectors копируются без пересчёта. Core проверяет schema/provider/model/dimension/
+count, затем переключает active source; прежний source сохраняется для rollback.
 
 ## MCP
 
-```powershell
-& $codeIndex mcp
-# или
-& "$env:LOCALAPPDATA\CodeIndex\bin\code-index-mcp.cmd"
-```
+~~~text
+symbraid mcp
+symbraid mcp --http 127.0.0.1:8765
+~~~
 
-MCP использует stdio; не запускайте его интерактивно и не печатайте посторонний
-текст в stdout процесса.
+Stdio — default, HTTP — explicit loopback opt-in. Gateway предоставляет только
+semantic_search, index_status и list_index_sources.

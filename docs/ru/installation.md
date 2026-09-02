@@ -1,111 +1,70 @@
 # Установка, обновление и удаление
 
-## Требования
+## Поддерживаемая база
 
 - Windows 10/11 x64;
-- Python 3.10+ в `PATH`;
-- `ripgrep` (`rg.exe`);
-- Node.js/npm и VS Code CLI (`code.cmd`) для extension;
-- Codex CLI для Codex plugin;
-- Qdrant опционален; LanceDB не требует Docker.
+- Linux glibc x86_64 (native release baseline);
+- Python 3.10+;
+- ripgrep (rg);
+- Node.js/VS Code и Codex CLI только для нужных интеграций.
 
-Проверьте инструменты:
+LanceDB работает локально. Qdrant опционален и включается только явно. Docker
+для core не требуется.
 
-```powershell
-python --version
-rg --version
-node --version
-npm.cmd --version
-code.cmd --version
-codex --version
-```
+## Установка из checkout
 
-## Полная установка
+~~~powershell
+git clone <repository-url> symbraid
+cd symbraid
+python -m pip install -e ./components/symbraid
+python -m symbraid --help
+~~~
 
-```powershell
-git clone <URL-вашего-репозитория> semantic-code-index-kit
-cd semantic-code-index-kit
+В Windows остаётся удобный installer:
+
+~~~powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\install-windows.ps1
-```
+~~~
 
-Флаги установщика:
+Runtime хранится вне checkout; пакеты не публикуются. Если интеграции не нужны,
+используйте SkipExtension или SkipCodexPlugin. Credentials нельзя передавать в
+аргументах или сохранять в config.
 
-- `-SkipExtension` — не собирать/устанавливать VS Code extension;
-- `-SkipCodexPlugin` — не подключать marketplace и Codex plugin;
-- `-SkipDependencies` — не запускать pip, если venv уже подготовлен.
+## Первый проект
 
-Установленные данные:
+Имена команд одинаковы на поддерживаемых платформах:
 
-```text
-%LOCALAPPDATA%\CodeIndex\
-├─ app\                 копия Python-компонента
-├─ runtime\.venv\      изолированный Python runtime
-├─ bin\                 code-index.cmd и code-index-mcp.cmd
-├─ config.json          registry без секретов
-├─ data\lancedb\       managed LanceDB indexes
-├─ models\              model cache FastEmbed
-└─ locks\               project locks
-```
+~~~text
+symbraid project register /absolute/path/to/project
+symbraid index /absolute/path/to/project
+symbraid status /absolute/path/to/project
+~~~
 
-VSIX собирается как `%LOCALAPPDATA%\CodeIndex\ada-b.code-index-0.1.0.vsix`.
-Codex marketplace регистрируется из корня клона, затем устанавливается
-`hybrid-code-search@semantic-code-index-kit`.
-
-После установки:
-
-1. перезапустите окно VS Code;
-2. откройте новую сессию Codex;
-3. зарегистрируйте проект CLI или просто откройте его в VS Code;
-4. включите watcher кликом по `Code Index: Off`, если он нужен.
-
-## Только приложение
-
-```powershell
-.\scripts\install-windows.ps1 -SkipExtension -SkipCodexPlugin
-```
+После установки интеграции откройте новое окно VS Code или новую Codex session.
 
 ## Обновление
 
-```powershell
-git pull
-.\scripts\verify-windows.ps1
-.\scripts\install-windows.ps1
-```
+1. Просмотрите CHANGELOG.
+2. Запустите проверки своей платформы.
+3. Установите core и нужные интеграции из checkout.
+4. Проверьте status и metadata active source.
 
-Установщик сохраняет предыдущую копию runtime app как `app.previous`. Registry,
-models и indexes не перезаписываются. Если изменилась embedding model/dimension,
-выполните новую индексацию; несовместимый существующий store не будет принят.
+Registry, model cache и managed indexes сохраняются. Изменение model/dimension
+требует нового source и полной переиндексации; backend migration embeddings не
+пересчитывает.
 
 ## Удаление
 
-По умолчанию удаляются integrations, но пользовательские индексы сохраняются:
+Сначала удалите интеграции, а runtime data — только после проверки абсолютных
+путей. Existing managed indexes и внешние collections автоматически не удаляются.
+Разрушительную очистку выполняйте отдельным явным действием.
 
-```powershell
-.\scripts\uninstall-windows.ps1
-```
+## Codex marketplace
 
-Удалить также marketplace:
+~~~powershell
+codex plugin marketplace add symbraid-project/symbraid --ref main
+codex plugin add symbraid-search@symbraid
+~~~
 
-```powershell
-.\scripts\uninstall-windows.ps1 -RemoveMarketplace
-```
-
-Полностью удалить runtime, registry, models и indexes:
-
-```powershell
-.\scripts\uninstall-windows.ps1 -RemoveMarketplace -RemoveData
-```
-
-`-RemoveData` — необратимая операция и требует PowerShell confirmation.
-
-## Установка из GitHub marketplace
-
-После публикации репозитория marketplace можно добавить напрямую:
-
-```powershell
-codex plugin marketplace add OWNER/semantic-code-index-kit --ref main
-codex plugin add hybrid-code-search@semantic-code-index-kit
-```
-
-Само приложение Code Index всё равно необходимо установить корневым PowerShell
-скриптом: Codex plugin не содержит Python runtime и backend drivers.
+Plugin остаётся только тонким клиентом; core, зависимости и backend ставятся
+отдельно.

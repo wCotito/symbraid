@@ -1,100 +1,76 @@
 # Архитектура
 
-## Общая схема
+Symbraid — локальный индекс исходного кода. Портируемое Python-ядро владеет
+конфигурацией, индексацией, managed-хранилищами и foreground watcher. Клиенты
+используют read-only контракт MCP и не открывают vector store напрямую.
 
-```text
+~~~text
 проект на диске
       │
       ▼
-Code Index CLI / VS Code watcher
-  ├─ rg + .gitignore
+Symbraid core (CLI / foreground watcher)
+  ├─ rg + ignore rules
   ├─ Tree-sitter chunking
   ├─ file/content hashes
   └─ embedding profile
       │
       ▼
-один активный source проекта
-  ├─ managed LanceDB
-  └─ managed Qdrant
+один активный managed source проекта
+  ├─ LanceDB (локально)
+  └─ Qdrant (managed/remote)
       │
       ▼
 read-only MCP gateway
+  ├─ stdio (по умолчанию)
+  └─ loopback-only Streamable HTTP (opt-in)
       │
       ▼
-Codex plugin: semantic → rg → AST → чтение
-```
+VS Code, Codex и другие клиенты
+~~~
 
-## Компоненты
+## Границы
 
-### Code Index
+Ядро — единственный владелец registry, индексации, миграций и жизненного цикла
+watcher. Нормализованный абсолютный путь даёт стабильный project_id: первые 16
+символов SHA-256. У проекта ровно один активный managed source, результаты
+разных sources не смешиваются.
 
-Единственный владелец индексации. Registry связывает абсолютный путь проекта с
-`project_id`, набором managed sources и одним `active_source_id`. Code Index
-создаёт, обновляет и безопасно переключает эти sources.
+Watcher — видимый foreground-процесс ядра. Для операторов могут существовать
+service recipes, но installer не должен молча создавать привилегированный или
+всегда запущенный daemon.
 
-`project_id` — первые 16 символов SHA‑256 нормализованного абсолютного пути.
-Поэтому одинаковое имя папки в разных местах получает разные индексы.
+## Хранилища и миграция
 
-### VS Code extension
+Одна строка индекса соответствует функции, методу, классу или небольшому
+текстовому фрагменту. Payload включает repo_id, path, language, symbol, kind,
+диапазон строк и file/content hashes.
 
-Транспорт и lifecycle‑контроллер. Все настройки и операции выполняются командами
-CLI, чтобы extension не дублировал Python‑логику. Watcher запускается только для
-managed source с включённым `watch_enabled` и останавливается вместе с extension
-host.
+Incremental indexing сначала помечает metadata как incomplete, пересчитывает
+только изменённые chunks, удаляет удалённые пути и ставит complete только после
+успеха. Backend migration копирует vectors и payload партиями, проверяет
+schema/provider/model/dimension/count и атомарно меняет active source. Старый
+source остаётся вариантом rollback.
 
-### MCP gateway
+## MCP и клиенты
 
-Стабильная read-only граница между хранилищем и агентом. Клиент не должен знать,
-какой backend активен. Контракт одинаков для LanceDB и Qdrant.
+Gateway предоставляет ровно три read-only tools:
 
-### Codex plugin
+- semantic_search;
+- index_status;
+- list_index_sources.
 
-Содержит launcher и skill, но не индексатор. Semantic hit рассматривается только
-как кандидат. Перед изменением агент обязан подтвердить идентификаторы точным
-поиском, структуру AST/symbol search и прочитать актуальный файл с диска.
+Stdio используется по умолчанию. Streamable HTTP отключён без явного opt-in и
+может слушать только loopback. Codex plugin и VS Code — тонкие клиенты: они не
+импортируют LanceDB/Qdrant, не считают embeddings и не меняют индекс.
 
-## Chunk и payload
-
-Одна vector row соответствует функции, методу, классу или небольшому текстовому
-фрагменту. Основные поля:
-
-```json
-{
-  "repo_id": "0123456789abcdef",
-  "path": "src/auth/session.ts",
-  "language": "typescript",
-  "symbol": "renewSessionCredentials",
-  "kind": "function",
-  "start_line": 84,
-  "end_line": 126,
-  "file_hash": "...",
-  "content_hash": "...",
-  "text": "..."
-}
-```
-
-Metadata row хранит branch/commit, completeness, число файлов/chunks, schema,
-embedding provider/model/dimension. `indexing_complete=false` означает, что индекс
-нельзя считать полным.
-
-## Инкрементальная индексация
-
-1. `rg --files` формирует список с учётом `.gitignore` и исключений.
-2. File hash сравнивается с сохранёнными значениями.
-3. Embedding вычисляется только для новых/изменённых chunks.
-4. Точки удалённых файлов удаляются.
-5. Metadata сначала помечается incomplete и только после успеха — complete.
-
-## Миграция backend
-
-При `migrate-backend` vectors не вычисляются повторно. Приложение копирует vectors
-и payload партиями, проверяет schema/provider/model/dimension/count и лишь затем
-атомарно меняет `active_source_id`. Исходный индекс остаётся rollback‑вариантом.
-При ошибке активный source не переключается, а состояние target восстанавливается.
+Semantic result — кандидат, а не доказательство. Перед изменением подтверждайте
+его точным поиском, AST/symbol search и чтением текущего файла с диска.
 
 ## Границы доверия
 
-- managed source: чтение и запись принадлежат Code Index;
-- MCP: только чтение;
-- Codex skill: не запускает индексацию;
-- secrets: Windows Credential Manager, в JSON только ссылки.
+- managed sources записывает только core;
+- MCP доступен только для чтения;
+- credentials принимаются через stdin или явно разрешённую env-ссылку и
+  хранятся в OS keyring;
+- пути, ключи, model cache и private source остаются локальными, кроме запросов
+  к настроенному embedding endpoint.
