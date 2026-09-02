@@ -9,11 +9,11 @@ import urllib.request
 import uuid
 from pathlib import Path
 
-from code_index.config import Config
-from code_index.indexer import CodeIndexer
-from code_index.lancedb_store import LanceDBStore
-from code_index.locking import ProjectLock
-from code_index.qdrant import QdrantStore
+from symbraid.config import Config
+from symbraid.indexer import CodeIndexer
+from symbraid.lancedb_store import LanceDBStore
+from symbraid.locking import ProjectLock
+from symbraid.qdrant import QdrantStore
 
 
 def config(backend, location):
@@ -76,13 +76,14 @@ class SafetyTests(unittest.TestCase):
             root = Path(directory); (root / "src").mkdir(); (root / "nested" / "node_modules").mkdir(parents=True)
             (root / "src" / "ok.py").write_text("def ok(): pass\n", encoding="utf-8")
             (root / "nested" / "node_modules" / "bad.js").write_text("bad()", encoding="utf-8")
-            cfg = Config.from_mapping({"backend": "lancedb", "lancedb_path": root / "db", "embedding_dimension": 3, "rg_path": str(Path.home() / "scoop" / "shims" / "rg.exe")})
+            cfg = Config.from_mapping({"backend": "lancedb", "lancedb_path": root / "db", "embedding_dimension": 3, "rg_path": "rg"})
             files = CodeIndexer(cfg, None, None)._list_files(root)
             self.assertEqual([p.relative_to(root).as_posix() for p in files], ["src/ok.py"])
 
     def test_mcp_exposes_read_only_tools(self):
-        source = Path("mcp_gateway.py").read_text(encoding="utf-8")
-        self.assertEqual(source.count("@mcp.tool()"), 3)
+        source_path = Path(__file__).parents[1] / "src/symbraid/mcp_server.py"
+        source = source_path.read_text(encoding="utf-8")
+        self.assertEqual(source.count("@server.tool()"), 3)
         for forbidden in ("index_project", "refresh_files", "remove_project"):
             self.assertNotIn(f"def {forbidden}", source)
 

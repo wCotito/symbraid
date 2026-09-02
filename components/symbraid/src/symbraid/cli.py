@@ -7,15 +7,13 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PROJECT_ROOT))
-
-from code_index.config import Config
-from code_index.embeddings import Embedder
-from code_index.locking import ProjectLock
-from code_index.registry import PROJECT_OVERRIDE_KEYS, Registry, app_root, normalize_project_path, project_id
-from code_index.secrets import get_secret, set_secret
-from code_index.service import CodeIndexService
+from .config import Config
+from .embeddings import Embedder
+from .locking import ProjectLock
+from .paths import app_paths
+from .registry import PROJECT_OVERRIDE_KEYS, Registry, normalize_project_path, project_id
+from .secrets import SecretUpdate, env_reference, get_secret
+from .service import CodeIndexService
 
 
 def emit(value: Any) -> None:
@@ -29,6 +27,14 @@ def stdin_json() -> Dict[str, Any]:
     return value
 
 
+def save_registry(registry: Registry, data: Dict[str, Any], pending_secret=None) -> None:
+    if pending_secret is None:
+        registry.save(data)
+        return
+    with SecretUpdate(*pending_secret):
+        registry.save(data)
+
+
 def profile_set(registry: Registry, args, values: Dict[str, Any] | None = None) -> Dict[str, Any]:
     values = values or {}
     profile_id = values.get("profile_id") or args.profile_id
@@ -39,12 +45,18 @@ def profile_set(registry: Registry, args, values: Dict[str, Any] | None = None) 
         if value is not None:
             profile[name] = value
     api_key = values.get("api_key")
+    api_key_env = values.get("api_key_env", getattr(args, "api_key_env", None))
     if getattr(args, "api_key_stdin", False):
+        if api_key_env:
+            raise ValueError("--api-key-stdin and --api-key-env are mutually exclusive")
         api_key = sys.stdin.read().rstrip("\r\n")
-    if api_key is not None:
+    pending_secret = None
+    if api_key_env:
+        profile["secret_ref"] = env_reference(str(api_key_env))
+    elif api_key is not None:
         reference = f"embedding:{profile_id}"
-        set_secret(reference, str(api_key))
         profile["secret_ref"] = reference if api_key else ""
+        pending_secret = (reference, str(api_key))
     profile.setdefault("display_name", profile_id)
     profile.setdefault("scope", "global")
     profile.setdefault("provider", "fastembed")
@@ -61,25 +73,35 @@ def profile_set(registry: Registry, args, values: Dict[str, Any] | None = None) 
     if profile["provider"] == "openai-compatible" and not profile.get("base_url"):
         raise ValueError("base_url is required for openai-compatible profiles")
     data["profiles"][profile_id] = profile
-    registry.save(data)
+    save_registry(registry, data, pending_secret)
     public = {k: v for k, v in profile.items() if k != "secret_ref"}
     public["api_key_configured"] = bool(profile.get("secret_ref"))
     return {"status": "ok", "profile_id": profile_id, "profile": public}
 
 
-def prepare_project_payload(registry: Registry, path: str, payload: Dict[str, Any], store: bool) -> Dict[str, Any]:
+def prepare_project_payload(
+    registry: Registry, path: str, payload: Dict[str, Any], store: bool = False,
+) -> Dict[str, Any]:
+    """Return a secret-free payload; persistence happens after validation.
+
+    The store argument remains accepted for transition-release callers.
+    """
     value = dict(payload)
-    if "qdrant_api_key" in value or value.get("clear_qdrant_api_key"):
+    if value.get("qdrant_api_key_env"):
+        if "qdrant_api_key" in value:
+            raise ValueError("qdrant_api_key and qdrant_api_key_env are mutually exclusive")
+        value["qdrant_secret_ref"] = env_reference(str(value["qdrant_api_key_env"]))
+    elif "qdrant_api_key" in value or value.get("clear_qdrant_api_key"):
         reference = f"qdrant:project:{project_id(path)}"
-        if store and "qdrant_api_key" in value:
-            set_secret(reference, str(value["qdrant_api_key"]))
         value["qdrant_secret_ref"] = "" if value.get("clear_qdrant_api_key") else reference
+        value["_replace_qdrant_key"] = bool(value.get("qdrant_api_key"))
     value.pop("qdrant_api_key", None)
+    value.pop("qdrant_api_key_env", None)
     return value
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="code-index", description="Independent semantic code index")
+    parser = argparse.ArgumentParser(prog="symbraid", description="Independent semantic code index")
     commands = parser.add_subparsers(dest="command", required=True)
 
     project = commands.add_parser("project")
@@ -87,7 +109,8 @@ def build_parser() -> argparse.ArgumentParser:
     register = project_commands.add_parser("register"); register.add_argument("path")
     project_commands.add_parser("list")
     remove = project_commands.add_parser("remove"); remove.add_argument("path")
-    watch = project_commands.add_parser("watch"); watch.add_argument("path"); watch.add_argument("enabled", choices=("on", "off"))
+    autowatch = project_commands.add_parser("autowatch"); autowatch.add_argument("path"); autowatch.add_argument("enabled", choices=("on", "off"))
+    legacy_watch = project_commands.add_parser("watch"); legacy_watch.add_argument("path"); legacy_watch.add_argument("enabled", choices=("on", "off"))
     override = project_commands.add_parser("override"); override.add_argument("path")
     for key in PROJECT_OVERRIDE_KEYS:
         option = "--" + key.replace("_", "-")
@@ -109,7 +132,8 @@ def build_parser() -> argparse.ArgumentParser:
     set_profile = profile_commands.add_parser("set"); set_profile.add_argument("profile_id")
     set_profile.add_argument("--display-name"); set_profile.add_argument("--scope", choices=("global", "project")); set_profile.add_argument("--project-id")
     set_profile.add_argument("--provider", choices=("fastembed", "openai-compatible")); set_profile.add_argument("--model")
-    set_profile.add_argument("--dimension", type=int); set_profile.add_argument("--base-url"); set_profile.add_argument("--api-key-stdin", action="store_true")
+    set_profile.add_argument("--dimension", type=int); set_profile.add_argument("--base-url")
+    set_profile.add_argument("--api-key-stdin", action="store_true"); set_profile.add_argument("--api-key-env")
     test_profile = profile_commands.add_parser("test"); test_profile.add_argument("profile_id")
     profile_commands.add_parser("test-config")
     delete_profile = profile_commands.add_parser("delete"); delete_profile.add_argument("profile_id")
@@ -119,7 +143,7 @@ def build_parser() -> argparse.ArgumentParser:
     defaults_commands.add_parser("show")
     set_defaults = defaults_commands.add_parser("set")
     set_defaults.add_argument("--backend", choices=("lancedb", "qdrant")); set_defaults.add_argument("--qdrant-url")
-    set_defaults.add_argument("--qdrant-api-key-stdin", action="store_true"); set_defaults.add_argument("--lancedb-root")
+    set_defaults.add_argument("--qdrant-api-key-stdin", action="store_true"); set_defaults.add_argument("--qdrant-api-key-env"); set_defaults.add_argument("--lancedb-root")
     set_defaults.add_argument("--embedding-profile"); set_defaults.add_argument("--debounce-ms", type=int)
     set_defaults.add_argument("--bulk-change-threshold", type=int); set_defaults.add_argument("--max-file-bytes", type=int)
     set_defaults.add_argument("--chunk-chars", type=int); set_defaults.add_argument("--chunk-overlap-chars", type=int)
@@ -139,13 +163,19 @@ def build_parser() -> argparse.ArgumentParser:
     search = commands.add_parser("search"); search.add_argument("project"); search.add_argument("query")
     search.add_argument("--top-k", type=int, default=10); search.add_argument("--path-filter")
     migrate = commands.add_parser("migrate-backend"); migrate.add_argument("project"); migrate.add_argument("backend", choices=("lancedb", "qdrant"))
-    commands.add_parser("mcp")
+    watch = commands.add_parser("watch"); watch.add_argument("project")
+    mcp_command = commands.add_parser("mcp")
+    mcp_command.add_argument("--transport", choices=("stdio", "streamable-http"), default="stdio")
+    mcp_command.add_argument("--project")
+    mcp_command.add_argument("--host", default="127.0.0.1")
+    mcp_command.add_argument("--port", type=int, default=8765)
+    mcp_command.add_argument("--token-env")
     return parser
 
 
 def test_profile_config(payload: Dict[str, Any]) -> Dict[str, Any]:
     config = Config.from_mapping({
-        "backend": "lancedb", "lancedb_path": PROJECT_ROOT / ".profile-test",
+        "backend": "lancedb", "lancedb_path": app_paths().cache / ".profile-test",
         "embedding_provider": payload.get("provider", "fastembed"),
         "embedding_model": payload.get("model", "jinaai/jina-embeddings-v2-base-code"),
         "embedding_dimension": int(payload.get("dimension", 768)),
@@ -189,9 +219,11 @@ def run(args) -> Any:
             removed = data["projects"].pop(key, None) is not None; registry.save(data)
             return {"status": "ok", "removed": removed, "index_retained": True}
         project = registry.project(args.path)
-        if args.project_command == "watch":
-            project["watch_enabled"] = args.enabled == "on"; registry.update_project(args.path, project)
-            return {"status": "ok", "watch_enabled": project["watch_enabled"]}
+        if args.project_command in {"autowatch", "watch"}:
+            if args.project_command == "watch":
+                print("project watch is deprecated; use project autowatch", file=sys.stderr)
+            project["auto_watch"] = args.enabled == "on"; registry.update_project(args.path, project)
+            return {"status": "ok", "auto_watch": project["auto_watch"]}
         overrides = project.setdefault("overrides", {})
         clears = set(args.clear)
         if args.clear_embedding_profile:
@@ -237,11 +269,19 @@ def run(args) -> Any:
             "backend", "qdrant_url", "lancedb_root", "embedding_profile", "debounce_ms",
             "bulk_change_threshold", "max_file_bytes", "chunk_chars", "chunk_overlap_chars", "batch_size", "rg_path",
         )}
+        if args.qdrant_api_key_stdin and args.qdrant_api_key_env:
+            raise ValueError("--qdrant-api-key-stdin and --qdrant-api-key-env are mutually exclusive")
+        pending_secret = None
         if args.qdrant_api_key_stdin:
-            reference = "qdrant:default"; set_secret(reference, sys.stdin.read().rstrip("\r\n")); data["defaults"]["qdrant_secret_ref"] = reference
+            reference = "qdrant:default"
+            pending_secret = (reference, sys.stdin.read().rstrip("\r\n"))
+            data["defaults"]["qdrant_secret_ref"] = reference
+        elif args.qdrant_api_key_env:
+            data["defaults"]["qdrant_secret_ref"] = env_reference(args.qdrant_api_key_env)
         candidate = {**data["defaults"], **{k: v for k, v in mapping.items() if v is not None}}
         validate_defaults(data, candidate)
-        data["defaults"] = candidate; registry.save(data)
+        data["defaults"] = candidate
+        save_registry(registry, data, pending_secret)
         return {"status": "ok", "defaults": service.settings_state()["defaults"]}
 
     if args.command == "settings":
@@ -251,23 +291,36 @@ def run(args) -> Any:
         if args.settings_command == "plan":
             return service.plan_settings(args.project, prepare_project_payload(registry, args.project, payload, False))
         if args.settings_command == "apply-project":
-            prepared = prepare_project_payload(registry, args.project, payload, True)
-            return service.apply_project_settings(args.project, prepared)
+            prepared = prepare_project_payload(registry, args.project, payload)
+            pending_secret = None
+            if "qdrant_api_key" in payload and not payload.get("qdrant_api_key_env"):
+                pending_secret = (
+                    f"qdrant:project:{project_id(args.project)}", str(payload["qdrant_api_key"])
+                )
+            secret_update = SecretUpdate(*pending_secret) if pending_secret is not None else None
+            return service.apply_project_settings(args.project, prepared, secret_update=secret_update)
         if args.settings_command == "apply-defaults":
             data = registry.load()
-            if "qdrant_api_key" in payload:
-                reference = "qdrant:default"; set_secret(reference, str(payload.pop("qdrant_api_key"))); payload["qdrant_secret_ref"] = reference
+            pending_secret = None
+            if payload.get("qdrant_api_key_env"):
+                if "qdrant_api_key" in payload:
+                    raise ValueError("qdrant_api_key and qdrant_api_key_env are mutually exclusive")
+                payload["qdrant_secret_ref"] = env_reference(str(payload.pop("qdrant_api_key_env")))
+            elif "qdrant_api_key" in payload:
+                reference = "qdrant:default"
+                pending_secret = (reference, str(payload.pop("qdrant_api_key")))
+                payload["qdrant_secret_ref"] = reference
             if payload.pop("clear_qdrant_api_key", False):
                 payload["qdrant_secret_ref"] = ""
             allowed = set(data["defaults"])
             candidate = {**data["defaults"], **{k: v for k, v in payload.items() if k in allowed}}
             validate_defaults(data, candidate)
             data["defaults"] = candidate
-            registry.save(data)
+            save_registry(registry, data, pending_secret)
             return {"status": "ok", "defaults": service.settings_state()["defaults"]}
         backend = payload.get("backend", "lancedb")
         if backend == "lancedb":
-            root = Path(payload.get("lancedb_root", app_root() / "data/lancedb")).expanduser()
+            root = Path(payload.get("lancedb_root", app_paths().data / "lancedb")).expanduser()
             parent = root if root.exists() else root.parent
             if not parent.exists():
                 raise ValueError(f"LanceDB parent directory does not exist: {parent}")
@@ -284,9 +337,14 @@ def run(args) -> Any:
     if args.command == "status": return service.status(args.project)
     if args.command == "search": return service.search(args.query, args.project, args.top_k, args.path_filter)
     if args.command == "migrate-backend": return service.migrate_backend(args.project, args.backend)
+    if args.command == "watch":
+        from .watcher import watch_project
+        watch_project(args.project, registry=registry, reporter=emit)
+        return None
     if args.command == "mcp":
-        from mcp_gateway import run_mcp
-        run_mcp(); return None
+        from .mcp_server import run_mcp
+        run_mcp(args.transport, args.project, args.host, args.port, args.token_env)
+        return None
     raise RuntimeError("Unknown command")
 
 
@@ -303,13 +361,18 @@ def main() -> int:
         elif args.command == "settings" and args.settings_command == "apply-defaults": lock_key = "global-default-config"
         lock_key = lock_key or (project_id(lock_path) if lock_path else None)
         if lock_key:
-            with ProjectLock(app_root() / "locks", lock_key, 120): result = run(args)
+            with ProjectLock(app_paths().locks, lock_key, 120): result = run(args)
         else: result = run(args)
         if result is not None: emit(result)
         return 0
     except Exception as exc:
         print(json.dumps({"status": "error", "error": str(exc)}, ensure_ascii=False), file=sys.stderr)
         return 1
+
+
+def legacy_main() -> int:
+    print("warning: code-index is deprecated; use symbraid (alias removed in 2.0)", file=sys.stderr)
+    return main()
 
 
 if __name__ == "__main__":

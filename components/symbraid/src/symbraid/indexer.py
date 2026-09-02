@@ -14,6 +14,7 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional, Protocol, Sequ
 from .config import Config
 from .embeddings import Embedder
 from .locking import ProjectLock
+from .registry import normalize_project_path
 
 
 class VectorStore(Protocol):
@@ -157,8 +158,7 @@ def canonical_project(path: str) -> Path:
 
 
 def repo_identity(root: Path) -> str:
-    normalized = str(root).replace("\\", "/").rstrip("/").casefold()
-    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(normalize_project_path(str(root)).encode("utf-8")).hexdigest()[:16]
 
 
 def git_context(root: Path) -> Tuple[str, str]:
@@ -550,6 +550,9 @@ class CodeIndexer:
                     continue
                 paths_to_replace.append(relative)
                 chunks.extend(self.chunks_for_file(root, candidate, repo_id))
+            self.store.upsert([
+                self._metadata_point(root, repo_id, False, len(indexable), self.store.count_chunks(repo_id))
+            ])
             points = self._points_for_chunks(chunks)
             self.store.delete_paths(repo_id, paths_to_replace)
             self.store.upsert(points)

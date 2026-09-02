@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.symbraid-project/symbraid",
+  "title": "Symbraid",
+  "description": "Cross-platform semantic code search through three read-only MCP tools.",
+  "repository": {
+    "url": "https://github.com/symbraid-project/symbraid",
+    "source": "github"
+  },
+  "version": "0.3.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "symbraid",
+      "version": "0.3.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

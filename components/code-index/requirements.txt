@@ -1,5 +1,0 @@
-mcp>=1.13,<2
-fastembed>=0.7,<1
-tree-sitter-language-pack>=0.9,<1
-lancedb>=0.37,<0.38
-keyring>=25,<26

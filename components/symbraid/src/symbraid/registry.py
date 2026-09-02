@@ -11,9 +11,10 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from .config import Config
+from .paths import app_paths, legacy_app_root
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 INDEX_RECIPE_KEYS = ("max_file_bytes", "chunk_chars", "chunk_overlap_chars", "rg_path")
 PROJECT_OVERRIDE_KEYS = (
     "backend", "embedding_profile", "qdrant_url", "qdrant_secret_ref", "lancedb_root",
@@ -23,8 +24,8 @@ PROJECT_OVERRIDE_KEYS = (
 
 
 def app_root() -> Path:
-    local = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData/Local"))
-    return local / "CodeIndex"
+    """Compatibility helper. New code should use app_paths()."""
+    return app_paths().data
 
 
 def normalize_project_path(value: str) -> str:
@@ -42,7 +43,7 @@ def safe_name(value: str) -> str:
 
 
 def default_registry() -> Dict[str, Any]:
-    root = app_root()
+    paths = app_paths()
     return {
         "schema_version": SCHEMA_VERSION,
         "defaults": {
@@ -50,14 +51,14 @@ def default_registry() -> Dict[str, Any]:
             "embedding_profile": "default-code",
             "qdrant_url": "http://127.0.0.1:18133",
             "qdrant_secret_ref": "",
-            "lancedb_root": str(root / "data" / "lancedb"),
+            "lancedb_root": str(paths.data / "lancedb"),
             "debounce_ms": 1500,
             "bulk_change_threshold": 100,
             "max_file_bytes": 1048576,
             "chunk_chars": 1600,
             "chunk_overlap_chars": 200,
             "batch_size": 32,
-            "rg_path": str(Path.home() / "scoop" / "shims" / "rg.exe"),
+            "rg_path": "rg",
         },
         "profiles": {
             "default-code": {
@@ -76,7 +77,19 @@ def default_registry() -> Dict[str, Any]:
 
 class Registry:
     def __init__(self, path: Optional[Path] = None):
-        self.path = path or app_root() / "config.json"
+        self._default_path = path is None
+        self.path = path or app_paths().registry
+        if self._default_path:
+            self._import_legacy_registry()
+
+    def _import_legacy_registry(self) -> None:
+        """Copy, never move, the legacy registry before schema migration."""
+        legacy_root = legacy_app_root()
+        legacy = legacy_root / "config.json" if legacy_root else None
+        if self.path.exists() or legacy is None or not legacy.is_file():
+            return
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(legacy, self.path)
 
     def load(self) -> Dict[str, Any]:
         if not self.path.exists():
@@ -85,19 +98,32 @@ class Registry:
         version = int(raw.get("schema_version", 1))
         if version == 1:
             raw = self._migrate_v1(raw)
+            version = 2
+        if version == 2:
+            raw = self._migrate_v2(raw)
+            version = 3
+        if version != SCHEMA_VERSION:
+            raise ValueError(f"Unsupported Symbraid config schema: {version}")
+        if int(raw.get("schema_version", 0)) != SCHEMA_VERSION:
+            raw["schema_version"] = SCHEMA_VERSION
+        if not self.path.exists() or json.loads(self.path.read_text(encoding="utf-8")).get("schema_version") != SCHEMA_VERSION:
             self.save(raw)
-        elif version != SCHEMA_VERSION:
-            raise ValueError(f"Unsupported Code Index config schema: {version}")
         merged = default_registry()
         merged["defaults"].update(raw.get("defaults") or {})
         merged["profiles"].update(raw.get("profiles") or {})
         merged["projects"].update(raw.get("projects") or {})
         return merged
 
-    def _migrate_v1(self, raw: Dict[str, Any]) -> Dict[str, Any]:
-        backup = self.path.with_name(self.path.name + ".v1.bak")
-        if self.path.exists() and not backup.exists():
+    def _backup(self, version: int) -> None:
+        backup = self.path.with_name(self.path.name + f".v{version}.bak")
+        if not self.path.exists() or backup.exists():
+            return
+        current = json.loads(self.path.read_text(encoding="utf-8"))
+        if int(current.get("schema_version", 1)) == version:
             shutil.copy2(self.path, backup)
+
+    def _migrate_v1(self, raw: Dict[str, Any]) -> Dict[str, Any]:
+        self._backup(1)
         data = copy.deepcopy(raw)
         defaults = data.setdefault("defaults", {})
         defaults.pop("kilo_lancedb_roots", None)
@@ -113,7 +139,8 @@ class Registry:
             effective = {**resolved_defaults, **overrides}
             sources: Dict[str, Any] = {}
             for source_id, source in (project.get("sources") or {}).items():
-                if source.get("owner", "code-index") != "code-index" or source.get("mode", "read-write") == "read-only":
+                owner = source.get("owner", "code-index")
+                if owner not in {"code-index", "symbraid"} or source.get("mode", "read-write") == "read-only":
                     continue
                 managed = copy.deepcopy(source)
                 managed.pop("owner", None)
@@ -123,8 +150,7 @@ class Registry:
                 managed.setdefault("recipe", {key: effective[key] for key in INDEX_RECIPE_KEYS})
                 sources[source_id] = managed
             active = project.get("active_source_id")
-            lost_active = active not in sources
-            if lost_active:
+            if active not in sources:
                 preferred = f"managed-{resolved_defaults['backend']}"
                 if preferred in sources:
                     active = preferred
@@ -135,10 +161,31 @@ class Registry:
                     sources[created["id"]] = created
                     active = created["id"]
                 project["watch_enabled"] = False
-            project["project_id"] = identifier
-            project["sources"] = sources
-            project["active_source_id"] = active
-            project["overrides"] = overrides
+            project.update({
+                "project_id": identifier,
+                "sources": sources,
+                "active_source_id": active,
+                "overrides": overrides,
+            })
+        data["schema_version"] = 2
+        return data
+
+    def _migrate_v2(self, raw: Dict[str, Any]) -> Dict[str, Any]:
+        self._backup(2)
+        data = copy.deepcopy(raw)
+        migrated: Dict[str, Any] = {}
+        for project in (data.setdefault("projects", {}) or {}).values():
+            item = copy.deepcopy(project)
+            item["auto_watch"] = bool(item.pop("watch_enabled", item.get("auto_watch", False)))
+            key = normalize_project_path(item["path"])
+            if key in migrated:
+                previous = migrated[key]
+                raise ValueError(
+                    "Project path collision during schema v3 migration: "
+                    f"{previous.get('path')} and {item['path']} both normalize to {key}"
+                )
+            migrated[key] = item
+        data["projects"] = migrated
         data["schema_version"] = SCHEMA_VERSION
         return data
 
@@ -167,7 +214,7 @@ class Registry:
         identifier = project_id(str(root))
         source = self._managed_source(data, root, identifier, data["defaults"]["backend"])
         project = {
-            "path": str(root), "project_id": identifier, "watch_enabled": False,
+            "path": str(root), "project_id": identifier, "auto_watch": False,
             "active_source_id": source["id"], "overrides": {}, "sources": {source["id"]: source},
         }
         data["projects"][key] = project
@@ -184,7 +231,7 @@ class Registry:
         if backend == "qdrant":
             location = {
                 "url": values["qdrant_url"],
-                "collection": f"code-index-{identifier}{suffix}",
+                "collection": f"symbraid-{identifier}{suffix}",
                 "secret_ref": values.get("qdrant_secret_ref", ""),
             }
         else:
@@ -238,6 +285,7 @@ class Registry:
         if profile is None:
             raise ValueError(f"Embedding profile does not exist: {profile_id}")
         location = source.get("location") or {}
+        paths = app_paths()
         config_values = {
             **values,
             "backend": source["backend"],
@@ -250,8 +298,8 @@ class Registry:
             "embedding_dimension": profile["dimension"],
             "embedding_base_url": profile.get("base_url", ""),
             "embedding_api_key": embedding_secret if profile.get("secret_ref") else "",
-            "model_cache": app_root() / "models",
-            "lock_dir": app_root() / "locks",
+            "model_cache": paths.cache / "models",
+            "lock_dir": paths.locks,
         }
         config = Config.from_mapping(config_values)
         config.validate()

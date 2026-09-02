@@ -1,4 +1,7 @@
 # Python
+*.egg-info/
+build/
+dist/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -13,6 +16,11 @@ node_modules/
 .models/
 *.lance/
 
+# Benchmark raw output and local adapter state
+benchmarks/results/
+benchmarks/**/.cache/
+benchmarks/**/.venv/
+
 # Editors and OS
 .vscode/
 .idea/
@@ -24,3 +32,4 @@ Thumbs.db
 .env.*
 !.env.example
 *.key
+benchmarks/external/codesearchnet/

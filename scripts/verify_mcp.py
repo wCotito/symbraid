@@ -1,11 +1,10 @@
-"""Perform a real stdio handshake with the installed read-only MCP gateway."""
+"""Perform a real stdio handshake with the portable Symbraid MCP command."""
 
 from __future__ import annotations
 
 import asyncio
 import json
 import os
-from pathlib import Path
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -15,11 +14,14 @@ EXPECTED_TOOLS = {"semantic_search", "index_status", "list_index_sources"}
 
 
 async def verify() -> None:
-    launcher = Path(os.environ["LOCALAPPDATA"]) / "CodeIndex" / "bin" / "code-index-mcp.cmd"
-    if not launcher.is_file():
-        raise SystemExit(f"MCP launcher not found: {launcher}")
+    command = os.environ.get("SYMBRAID_COMMAND", "symbraid").strip()
+    if not command:
+        raise SystemExit("SYMBRAID_COMMAND must name the Symbraid executable")
 
-    parameters = StdioServerParameters(command="cmd.exe", args=["/d", "/s", "/c", str(launcher)])
+    parameters = StdioServerParameters(
+        command=command,
+        args=["mcp", "--transport", "stdio"],
+    )
     async with stdio_client(parameters) as (read_stream, write_stream):
         async with ClientSession(read_stream, write_stream) as session:
             await session.initialize()
@@ -30,7 +32,7 @@ async def verify() -> None:
             "Unexpected MCP tools: "
             + json.dumps({"expected": sorted(EXPECTED_TOOLS), "actual": sorted(tools)})
         )
-    print(json.dumps({"status": "ok", "tools": sorted(tools)}))
+    print(json.dumps({"status": "ok", "command": command, "tools": sorted(tools)}))
 
 
 if __name__ == "__main__":

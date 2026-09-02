@@ -4,6 +4,7 @@ import copy
 import hashlib
 import json
 import uuid
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
 
@@ -11,8 +12,10 @@ from .embeddings import Embedder
 from .indexer import CodeIndexer, canonical_project, repo_identity
 from .lancedb_store import LanceDBStore
 from .qdrant import QdrantStore
+from .locking import watcher_status
+from .paths import app_paths
 from .registry import INDEX_RECIPE_KEYS, PROJECT_OVERRIDE_KEYS, Registry
-from .secrets import get_secret
+from .secrets import SecretUpdate, get_secret
 
 
 class CodeIndexService:
@@ -27,14 +30,16 @@ class CodeIndexService:
             raise ValueError(f"Embedding profile does not exist: {profile_id}")
         return profile
 
-    def _config(self, project: Dict[str, Any], source: Dict[str, Any]):
+    def _config(
+        self, project: Dict[str, Any], source: Dict[str, Any], resolve_secrets: bool = True,
+    ):
         profile = self._profile(source)
         location = source.get("location") or {}
         return self.registry.resolved_config(
             project,
             source,
-            embedding_secret=get_secret(profile.get("secret_ref", "")),
-            qdrant_secret=get_secret(location.get("secret_ref", "")),
+            embedding_secret=get_secret(profile.get("secret_ref", "")) if resolve_secrets else "",
+            qdrant_secret=get_secret(location.get("secret_ref", "")) if resolve_secrets else "",
         )
 
     @staticmethod
@@ -60,7 +65,11 @@ class CodeIndexService:
     def status(self, project_path: str) -> Dict[str, Any]:
         project, source, config, _ = self._active(project_path)
         result = CodeIndexer(config, self._store(config), Embedder(config)).index_status(project["path"])
-        return {**result, "source_id": source["id"], "backend": source["backend"]}
+        return {
+            **result, "source_id": source["id"], "backend": source["backend"],
+            "auto_watch": bool(project.get("auto_watch")),
+            "watcher": watcher_status(app_paths().locks, project["project_id"]),
+        }
 
     def search(
         self, query: str, project_path: str, top_k: int = 10, path_filter: Optional[str] = None,
@@ -84,7 +93,8 @@ class CodeIndexService:
         return {
             "status": "ok", "project": project["path"],
             "active_source_id": project["active_source_id"],
-            "watch_enabled": bool(project.get("watch_enabled")),
+            "auto_watch": bool(project.get("auto_watch")),
+            "watcher": watcher_status(app_paths().locks, project["project_id"]),
             "overrides": project.get("overrides") or {},
             "sources": [self._public_source(source) for source in project["sources"].values()],
         }
@@ -146,7 +156,8 @@ class CodeIndexService:
             effective = self.registry.resolved_settings(project)
             result["project"] = {
                 "path": project["path"], "project_id": project["project_id"],
-                "watch_enabled": bool(project.get("watch_enabled")),
+                "auto_watch": bool(project.get("auto_watch")),
+                "watcher": watcher_status(app_paths().locks, project["project_id"]),
                 "overrides": self._public_settings(project.get("overrides") or {}),
                 "effective": self._public_settings(effective),
                 "active_source_id": project["active_source_id"],
@@ -209,7 +220,7 @@ class CodeIndexService:
         normalized = {
             "project": project["path"], "desired": desired, "impact": impact,
             "structural_changes": structural, "connection_changes": connection,
-            "replace_qdrant_key": bool(payload.get("qdrant_api_key")),
+            "replace_qdrant_key": bool(payload.get("_replace_qdrant_key", payload.get("qdrant_api_key"))),
             "clear_qdrant_key": bool(payload.get("clear_qdrant_api_key")),
         }
         digest = hashlib.sha256(json.dumps(normalized, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
@@ -247,7 +258,12 @@ class CodeIndexService:
             raise RuntimeError(f"Source transfer verification failed: expected {expected}, got {actual}")
         return actual
 
-    def apply_project_settings(self, project_path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def apply_project_settings(
+        self,
+        project_path: str,
+        payload: Dict[str, Any],
+        secret_update: Optional[SecretUpdate] = None,
+    ) -> Dict[str, Any]:
         plan = self.plan_settings(project_path, payload)
         if payload.get("plan_hash") != plan["plan_hash"]:
             raise ValueError("Settings changed after planning; request a new plan")
@@ -261,12 +277,16 @@ class CodeIndexService:
         for key in PROJECT_OVERRIDE_KEYS:
             if key in payload and payload[key] is not None:
                 overrides[key] = payload[key]
-        if "watch_enabled" in payload:
-            updated["watch_enabled"] = bool(payload["watch_enabled"])
+        watch_value = payload.get("auto_watch", payload.get("watch_enabled"))
+        if watch_value is not None:
+            updated["auto_watch"] = bool(watch_value)
         if plan["impact"] == "configuration-only":
             if desired["backend"] == "qdrant" and "qdrant_secret_ref" in desired:
                 updated["sources"][source["id"]].setdefault("location", {})["secret_ref"] = desired["qdrant_secret_ref"]
-            self.registry.update_project(project_path, updated)
+            self._config(updated, updated["sources"][source["id"]], resolve_secrets=False)
+            transaction = secret_update if secret_update is not None else nullcontext()
+            with transaction:
+                self.registry.update_project(project_path, updated)
             return {"status": "ok", "impact": plan["impact"], "active_source_id": source["id"]}
 
         source_id = f"managed-{desired['backend']}-{uuid.uuid4().hex[:8]}"
@@ -274,28 +294,35 @@ class CodeIndexService:
             self.registry.load(), Path(project["path"]), project["project_id"],
             desired["backend"], source_id=source_id, settings=desired,
         )
-        target_config = self._config(updated, target)
-        target_store = self._store(target_config)
-        repo_id = repo_identity(canonical_project(project["path"]))
-        try:
-            if plan["impact"] == "transfer":
-                chunks = self._transfer(updated, source, target)
-            else:
-                indexer = CodeIndexer(target_config, target_store, Embedder(target_config))
-                result = indexer.index_project(project["path"], force=True)
-                chunks = int(result.get("chunks_total", result.get("chunks", result.get("chunk_count", 0))))
-                status = indexer.index_status(project["path"])
-                if not status.get("indexed") or not (status.get("metadata") or {}).get("indexing_complete"):
-                    raise RuntimeError("New source verification failed")
-        except Exception:
+        self._config(updated, target, resolve_secrets=False)
+        if plan["impact"] == "transfer":
+            self._config(updated, source, resolve_secrets=False)
+        transaction = secret_update if secret_update is not None else nullcontext()
+        with transaction:
+            target_store = None
+            repo_id = repo_identity(canonical_project(project["path"]))
             try:
-                target_store.delete_repo(repo_id)
-            except Exception:
-                pass
-            raise
-        updated["sources"][target["id"]] = target
-        updated["active_source_id"] = target["id"]
-        self.registry.update_project(project_path, updated)
+                target_config = self._config(updated, target)
+                target_store = self._store(target_config)
+                if plan["impact"] == "transfer":
+                    chunks = self._transfer(updated, source, target)
+                else:
+                    indexer = CodeIndexer(target_config, target_store, Embedder(target_config))
+                    result = indexer.index_project(project["path"], force=True)
+                    chunks = int(result.get("chunks_total", result.get("chunks", result.get("chunk_count", 0))))
+                    status = indexer.index_status(project["path"])
+                    if not status.get("indexed") or not (status.get("metadata") or {}).get("indexing_complete"):
+                        raise RuntimeError("New source verification failed")
+                updated["sources"][target["id"]] = target
+                updated["active_source_id"] = target["id"]
+                self.registry.update_project(project_path, updated)
+            except BaseException:
+                if target_store is not None:
+                    try:
+                        target_store.delete_repo(repo_id)
+                    except Exception:
+                        pass
+                raise
         return {
             "status": "ok", "impact": plan["impact"], "from": source["id"],
             "to": target["id"], "chunks": chunks, "source_retained": True,

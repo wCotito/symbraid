@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
+
+from .paths import app_paths
 
 
 @dataclass(frozen=True)
@@ -29,20 +30,20 @@ class Config:
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, Any]) -> "Config":
-        local_data = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData/Local"))
+        paths = app_paths()
         return cls(
             backend=str(values.get("backend", "lancedb")).lower(),
             qdrant_url=str(values.get("qdrant_url", "http://127.0.0.1:18133")).rstrip("/"),
             qdrant_api_key=str(values.get("qdrant_api_key", "")),
             collection=str(values.get("collection", "")),
-            lancedb_path=Path(str(values.get("lancedb_path", local_data / "CodeIndex/data/lancedb/default"))),
+            lancedb_path=Path(str(values.get("lancedb_path", paths.data / "lancedb/default"))),
             embedding_provider=str(values.get("embedding_provider", "fastembed")).lower(),
             embedding_model=str(values.get("embedding_model", "jinaai/jina-embeddings-v2-base-code")),
             embedding_dimension=int(values.get("embedding_dimension", 768)),
             embedding_base_url=str(values.get("embedding_base_url", "")).rstrip("/"),
             embedding_api_key=str(values.get("embedding_api_key", "")),
-            model_cache=Path(str(values.get("model_cache", local_data / "CodeIndex/models"))),
-            lock_dir=Path(str(values.get("lock_dir", local_data / "CodeIndex/locks"))),
+            model_cache=Path(str(values.get("model_cache", paths.cache / "models"))),
+            lock_dir=Path(str(values.get("lock_dir", paths.locks))),
             lock_timeout_seconds=float(values.get("lock_timeout_seconds", 120)),
             rg_path=str(values.get("rg_path", "rg")),
             max_file_bytes=int(values.get("max_file_bytes", 1048576)),
