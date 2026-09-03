@@ -7,13 +7,16 @@ import json
 import subprocess
 import tempfile
 import unittest
+import urllib.error
 import urllib.request
 import uuid
 from pathlib import Path
+from unittest import mock
 
 from symbraid import __version__
 from symbraid.cli import build_parser
 from symbraid.config import Config
+from symbraid.embeddings import Embedder, EmbeddingError
 from symbraid.indexer import SymbraidIndexer
 from symbraid.lancedb_store import LanceDBStore
 from symbraid.locking import ProjectLock
@@ -92,6 +95,87 @@ class SafetyTests(unittest.TestCase):
             files = SymbraidIndexer(cfg, None, None)._list_files(root)
             self.assertEqual([p.relative_to(root).as_posix() for p in files], ["src/ok.py"])
 
+    def test_transient_embedding_failure_is_retried(self):
+        cfg = Config.from_mapping({
+            "embedding_provider": "openai-compatible",
+            "embedding_model": "fixture",
+            "embedding_dimension": 3,
+            "embedding_base_url": "http://127.0.0.1:1/v1",
+        })
+        response = io.BytesIO(b'{"data":[{"index":0,"embedding":[1.0,0.0,0.0]}]}')
+        opener = mock.Mock()
+        opener.open.side_effect = [urllib.error.URLError("temporary"), response]
+        with mock.patch("symbraid.embeddings.urllib.request.build_opener", return_value=opener), mock.patch(
+            "symbraid.embeddings.time.sleep"
+        ) as sleep:
+            self.assertEqual(Embedder(cfg).embed_query("query"), [1.0, 0.0, 0.0])
+        self.assertEqual(opener.open.call_count, 2)
+        sleep.assert_called_once()
+    def test_permanent_embedding_http_error_is_not_retried_or_leaked(self):
+        cfg = Config.from_mapping({
+            "embedding_provider": "openai-compatible",
+            "embedding_model": "fixture",
+            "embedding_dimension": 3,
+            "embedding_base_url": "https://embedding.invalid/v1",
+            "embedding_api_key": "never-print-this-secret",
+        })
+        opener = mock.Mock()
+        opener.open.side_effect = urllib.error.HTTPError(
+            cfg.embedding_base_url, 401, "Unauthorized", {}, None
+        )
+        with mock.patch("symbraid.embeddings.urllib.request.build_opener", return_value=opener), mock.patch(
+            "symbraid.embeddings.time.sleep"
+        ) as sleep, self.assertRaises(EmbeddingError) as raised:
+            Embedder(cfg).embed_query("query")
+        self.assertEqual(opener.open.call_count, 1)
+        sleep.assert_not_called()
+        self.assertNotIn(cfg.embedding_api_key, str(raised.exception))
+        self.assertIn("HTTP 401", str(raised.exception))
+
+    def test_transient_embedding_failure_stops_after_three_attempts(self):
+        cfg = Config.from_mapping({
+            "embedding_provider": "openai-compatible",
+            "embedding_model": "fixture",
+            "embedding_dimension": 3,
+            "embedding_base_url": "http://127.0.0.1:1/v1",
+        })
+        opener = mock.Mock()
+        opener.open.side_effect = urllib.error.URLError("temporary")
+        with mock.patch("symbraid.embeddings.urllib.request.build_opener", return_value=opener), mock.patch(
+            "symbraid.embeddings.time.sleep"
+        ) as sleep, self.assertRaisesRegex(EmbeddingError, "after 3 attempts"):
+            Embedder(cfg).embed_query("query")
+        self.assertEqual(opener.open.call_count, 3)
+        self.assertEqual(sleep.call_count, 2)
+
+    def test_alias_paths_are_canonicalized_for_containment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            alias_root = base / "RUNNER~1"
+            canonical_root = base / "runner"
+            canonical_file = canonical_root / "src" / "ok.py"
+            canonical_file.parent.mkdir(parents=True)
+            canonical_file.write_text("def ok(): pass\n", encoding="utf-8")
+            alias_file = alias_root / "src" / "ok.py"
+            original_resolve = Path.resolve
+
+            def resolve(value, *args, **kwargs):
+                if value == alias_root:
+                    return canonical_root
+                if value == alias_file:
+                    return canonical_file
+                return original_resolve(value, *args, **kwargs)
+
+            cfg = Config.from_mapping({
+                "backend": "lancedb", "lancedb_path": base / "db",
+                "embedding_dimension": 3, "rg_path": "rg",
+            })
+            listed = mock.Mock(stdout="src/ok.py\n")
+            with mock.patch("symbraid.indexer.subprocess.run", return_value=listed), mock.patch.object(
+                Path, "resolve", resolve
+            ):
+                files = SymbraidIndexer(cfg, None, None)._list_files(alias_root)
+            self.assertEqual(files, [alias_file])
     def test_mcp_exposes_read_only_tools(self):
         source_path = Path(__file__).parents[1] / "src/symbraid/mcp_server.py"
         source = source_path.read_text(encoding="utf-8")

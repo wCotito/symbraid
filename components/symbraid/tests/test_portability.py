@@ -75,12 +75,25 @@ class WatcherTests(unittest.TestCase):
                 state = watcher_status(lock_dir, "fixture")
                 self.assertTrue(state["running"])
                 self.assertEqual(state["owner"]["pid"], os.getpid())
+                self.assertNotIn("probe", state)
                 with self.assertRaises(RuntimeError):
                     WatcherLease(lock_dir, "fixture").acquire()
             finally:
                 first.release()
             self.assertFalse(watcher_status(lock_dir, "fixture")["running"])
 
+    def test_status_tolerates_unreadable_lock(self):
+        with tempfile.TemporaryDirectory() as directory:
+            lock_dir = Path(directory)
+            owner_path = lock_dir / "watch-fixture.owner.json"
+            owner_path.write_text(json.dumps({"pid": 42}), encoding="utf-8")
+            with mock.patch(
+                "symbraid.locking.ProjectLock.acquire", side_effect=PermissionError("locked")
+            ):
+                state = watcher_status(lock_dir, "fixture")
+            self.assertTrue(state["running"])
+            self.assertEqual(state["owner"], {"pid": 42})
+            self.assertEqual(state["probe"], "unavailable")
     def test_pre_stopped_watcher_exits_without_indexing(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

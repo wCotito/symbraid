@@ -209,13 +209,15 @@ class SymbraidIndexer:
         except (OSError, subprocess.SubprocessError) as exc:
             raise RuntimeError(f"Unable to list project files with ripgrep: {exc}") from exc
         files: List[Path] = []
+        canonical_root = root.resolve()
         for relative in relative_paths:
-            path = (root / relative).resolve()
+            path = root / relative
+            canonical_path = path.resolve()
             try:
-                path.resolve().relative_to(root)
+                canonical_path.relative_to(canonical_root)
             except ValueError:
                 continue
-            if path.is_file() and self._supported(path) and path.stat().st_size <= self.config.max_file_bytes:
+            if canonical_path.is_file() and self._supported(path) and canonical_path.stat().st_size <= self.config.max_file_bytes:
                 files.append(path)
         return sorted(files)
 

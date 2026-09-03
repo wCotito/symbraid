@@ -111,13 +111,16 @@ def watcher_status(lock_dir: Path, repo_id: str) -> dict[str, Any]:
     probe = ProjectLock(lock_dir, f"watch-{repo_id}", 0.0)
     try:
         probe.acquire()
-    except TimeoutError:
+    except (TimeoutError, OSError) as exc:
         owner_path = lock_dir / f"watch-{repo_id}.owner.json"
         try:
             owner = json.loads(owner_path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             owner = {"state": "unknown"}
-        return {"running": True, "owner": owner}
+        result = {"running": True, "owner": owner}
+        if not isinstance(exc, TimeoutError):
+            result["probe"] = "unavailable"
+        return result
     else:
         probe.release()
         return {"running": False, "owner": None}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -60,11 +61,22 @@ class Embedder:
             headers["Authorization"] = f"Bearer {self.config.embedding_api_key}"
         request = urllib.request.Request(endpoint, data=payload, headers=headers, method="POST")
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-        try:
-            with opener.open(request, timeout=120) as response:
-                body = json.loads(response.read().decode("utf-8"))
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-            raise EmbeddingError(f"Embedding endpoint failed: {exc}") from exc
+        last_error: Exception | None = None
+        for attempt in range(3):
+            try:
+                with opener.open(request, timeout=120) as response:
+                    body = json.loads(response.read().decode("utf-8"))
+                break
+            except urllib.error.HTTPError as exc:
+                if exc.code not in {408, 429, 500, 502, 503, 504}:
+                    raise EmbeddingError(f"Embedding endpoint failed: HTTP {exc.code}") from exc
+                last_error = exc
+            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+                last_error = exc
+            if attempt < 2:
+                time.sleep(0.25 * (2**attempt))
+        else:
+            raise EmbeddingError(f"Embedding endpoint failed after 3 attempts: {last_error}") from last_error
         data = sorted(body.get("data", []), key=lambda item: item.get("index", 0))
         vectors = [item["embedding"] for item in data]
         if len(vectors) != len(texts):
