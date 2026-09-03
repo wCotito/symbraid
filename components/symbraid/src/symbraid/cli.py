@@ -12,13 +12,14 @@ from .config import Config
 from .embeddings import Embedder
 from .locking import ProjectLock
 from .paths import app_paths
+from .redaction import error_payload, write_json
 from .registry import PROJECT_OVERRIDE_KEYS, Registry, normalize_project_path, project_id
 from .secrets import SecretUpdate, env_reference, get_secret
 from .service import SymbraidService
 
 
 def emit(value: Any) -> None:
-    print(json.dumps(value, ensure_ascii=False, indent=2))
+    write_json(value, indent=2)
 
 
 def stdin_json() -> Dict[str, Any]:
@@ -371,7 +372,7 @@ def main() -> int:
         if result is not None: emit(result)
         return 0
     except Exception as exc:
-        print(json.dumps({"status": "error", "error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+        write_json(error_payload(exc), stream=sys.stderr)
         return 1
 
 

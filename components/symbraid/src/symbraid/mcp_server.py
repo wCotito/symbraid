@@ -13,6 +13,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
 from .registry import normalize_project_path
+from .redaction import error_payload, write_json
 from .secrets import env_reference, get_secret
 from .service import SymbraidService
 
@@ -173,7 +174,7 @@ def main() -> int:
         run_mcp(args.transport, args.project, args.host, args.port, args.token_env)
         return 0
     except Exception as exc:
-        print(json.dumps({"status": "error", "error": str(exc)}), file=sys.stderr)
+        write_json(error_payload(exc), stream=sys.stderr)
         return 1
 
 
