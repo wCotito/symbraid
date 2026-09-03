@@ -185,7 +185,13 @@ class SymbraidIndexer:
         self._lock = threading.Lock()
 
     def _list_files(self, root: Path) -> List[Path]:
-        command = [self.config.rg_path, "--files", "--hidden"]
+        command = [
+            self.config.rg_path,
+            "--files",
+            "--hidden",
+            "--no-ignore-global",
+            "--no-ignore-parent",
+        ]
         for glob in EXCLUDED_GLOBS:
             command.extend(["--glob", glob])
         try:
@@ -206,7 +212,7 @@ class SymbraidIndexer:
         for relative in relative_paths:
             path = (root / relative).resolve()
             try:
-                path.relative_to(root)
+                path.resolve().relative_to(root)
             except ValueError:
                 continue
             if path.is_file() and self._supported(path) and path.stat().st_size <= self.config.max_file_bytes:
@@ -324,7 +330,7 @@ class SymbraidIndexer:
         except Exception:
             return []
         lines = text.splitlines()
-        relative = path.relative_to(root).as_posix()
+        relative = path.resolve().relative_to(root).as_posix()
         chunks: List[Chunk] = []
         stack = [tree.root_node]
         while stack:
@@ -374,7 +380,7 @@ class SymbraidIndexer:
                     max(1, len(lines)),
                     {"language": language, "symbol": "", "kind": "text"},
                     repo_id,
-                    path.relative_to(root).as_posix(),
+                    path.resolve().relative_to(root).as_posix(),
                     file_hash,
                 )
             )
@@ -456,7 +462,7 @@ class SymbraidIndexer:
                 if text is None:
                     skipped_unreadable += 1
                     continue
-                relative = path.relative_to(root).as_posix()
+                relative = path.resolve().relative_to(root).as_posix()
                 manifests[relative] = (path, self._hash_text(text))
             changed = [
                 relative
@@ -513,7 +519,7 @@ class SymbraidIndexer:
             process_lock.acquire()
             self.store.ensure_collection()
             indexable = {
-                path.relative_to(root).as_posix(): path for path in self._list_files(root)
+                path.resolve().relative_to(root).as_posix(): path for path in self._list_files(root)
             }
             existing = self._existing_files(repo_id)
             requested_paths: List[str] = []
