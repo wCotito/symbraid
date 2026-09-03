@@ -26,3 +26,18 @@ and [operations guide](../operations/agent-deployment.md).
 The Manage Overview reads the current `project.index_status` payload from the
 CLI, including index completeness, counts, active backend, and watcher
 ownership.
+
+## Existing watcher processes and startup errors
+
+Before spawning a watcher, the extension asks the core for the current watcher
+status. If another terminal, editor instance, or OS service already owns the
+project lease, the extension adopts that state as an external running watcher
+instead of starting a duplicate. Stop an external watcher through the process
+or service that owns it.
+
+The extension periodically rechecks an adopted watcher and, if it exits,
+restarts it when auto-watch is enabled.
+
+A startup failure keeps the structured CLI error, writes it to the **Symbraid**
+output channel, and displays a notification with a **Show Output** action. The
+status-bar tooltip shows the same error.

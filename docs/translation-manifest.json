@@ -96,11 +96,11 @@
     },
     {
       "path": "docs/en/integrations/vscode.md",
-      "source_sha256": "5db112ec838b4cf1e2ed1db83d7d134e6916ae82185ea7f1b6ed1d68ce6e84e3",
+      "source_sha256": "7bfac43ba49f5e30a43eeb60f7432767988cf58c8ddaa77ca35209e55895d399",
       "translations": {
         "ru": {
           "path": "docs/ru/integrations/vscode.md",
-          "sha256": "19400119f908b55459bbc3fbda41e2806bd28038a339376f906e6765460e6eac",
+          "sha256": "c28e46738236f094d95728b5230bf97a10956fc96e9682efd84bc0307ea9467c",
           "status": "current"
         }
       }

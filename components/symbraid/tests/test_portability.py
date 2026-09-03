@@ -13,7 +13,7 @@ from unittest import mock
 
 from symbraid.config import Config
 from symbraid.indexer import SymbraidIndexer, repo_identity
-from symbraid.locking import WatcherLease, watcher_status
+from symbraid.locking import ProjectLock, WatcherLease, watcher_status
 from symbraid.mcp_server import _HttpSecurity, _loopback, _resolve_project
 from symbraid.paths import AppPaths, app_paths
 from symbraid.registry import Registry, default_registry, normalize_project_path
@@ -81,6 +81,33 @@ class WatcherTests(unittest.TestCase):
             finally:
                 first.release()
             self.assertFalse(watcher_status(lock_dir, "fixture")["running"])
+
+    def test_permanent_open_failure_is_not_reported_as_contention(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(
+            Path, "open", side_effect=PermissionError("access denied")
+        ):
+            with self.assertRaises(PermissionError):
+                ProjectLock(Path(directory), "fixture", 0.0).acquire()
+
+    def test_windows_share_violation_is_lock_contention(self):
+        error = PermissionError("sharing violation")
+        error.winerror = 32
+        with mock.patch("symbraid.locking.os.name", "nt"):
+            self.assertTrue(ProjectLock._windows_share_violation(error))
+        error.winerror = 5
+        with mock.patch("symbraid.locking.os.name", "nt"):
+            self.assertFalse(ProjectLock._windows_share_violation(error))
+
+    def test_lock_file_initialization_error_propagates(self):
+        handle = mock.MagicMock()
+        handle.tell.return_value = 0
+        handle.write.side_effect = OSError("disk failure")
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(
+            Path, "open", return_value=handle
+        ):
+            with self.assertRaisesRegex(OSError, "disk failure"):
+                ProjectLock(Path(directory), "fixture", 0.0).acquire()
+        handle.close.assert_called_once()
 
     def test_status_tolerates_unreadable_lock(self):
         with tempfile.TemporaryDirectory() as directory:

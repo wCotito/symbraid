@@ -33,6 +33,8 @@ function spawnSymbraid(executable, args, cwd, platform = process.platform) {
 
 const STOP_GRACE_TIMEOUT_MS = 5000;
 const STOP_FORCE_TIMEOUT_MS = 2000;
+const DIAGNOSTIC_TAIL_LIMIT = 16 * 1024;
+const EXTERNAL_PROBE_INTERVAL_MS = 5000;
 
 function childHasExited(child) {
   return (child.exitCode !== null && child.exitCode !== undefined)
@@ -109,7 +111,23 @@ async function terminateChild(child, options = {}) {
 }
 
 function commandError(stderr, stdout, error, args) {
-  return (stderr || stdout || error?.message || 'Symbraid command failed: ' + args.join(' ')).trim();
+  const message = (stderr || stdout || error?.message || 'Symbraid command failed: ' + args.join(' ')).trim();
+  try {
+    const payload = JSON.parse(message);
+    if (payload && typeof payload.error === 'string') return payload.error;
+  } catch (_) {
+    // Preserve non-JSON process diagnostics.
+  }
+  return message;
+}
+
+function watcherDetails(payload) {
+  const watcher = payload?.watcher ?? payload?.project?.watcher;
+  return watcher && watcher.running ? watcher : undefined;
+}
+
+function appendDiagnosticTail(current, chunk, limit = DIAGNOSTIC_TAIL_LIMIT) {
+  return (current + chunk).slice(-limit);
 }
 
 function runCommand(executable, args, cwd, stdin = undefined) {
@@ -163,6 +181,17 @@ class Controller {
     this.status.show();
     this.processes = new Map();
     this.states = new Map();
+    this.externalProbeActive = false;
+    this.starting = new Map();
+    this.disposed = false;
+    this.externalProbeTimer = setInterval(
+      () => {
+        void this.refreshExternalWatchers().catch((error) => {
+          if (!this.disposed) this.output.appendLine('[watch probe error] ' + error.message);
+        });
+      },
+      EXTERNAL_PROBE_INTERVAL_MS,
+    );
     // ManagePanel owns settings presentation; this host only applies them.
     const { ManagePanel } = require('./managePanel');
     this.managePanel = new ManagePanel(context, (args, cwd, stdin) => this.runCli(args, cwd, stdin), (folder, payload) => this.applyProjectSettings(folder, payload));
@@ -178,10 +207,17 @@ class Controller {
       try {
         const settings = await this.runCli(['settings', 'show', '--project', folder.uri.fsPath], folder.uri.fsPath);
         const autoWatch = projectAutoWatch(settings);
-        this.states.set(key, { mode: 'stopped', autoWatch });
-        if (autoWatch) await this.startWatch(folder, false);
+        const existingWatcher = watcherDetails(settings);
+        this.states.set(key, {
+          mode: existingWatcher ? 'running' : 'stopped',
+          autoWatch,
+          external: Boolean(existingWatcher),
+          owner: existingWatcher?.owner,
+        });
+        if (autoWatch && !existingWatcher) await this.startWatch(folder, false);
       } catch (error) {
         this.states.set(key, { mode: 'error', error: error.message });
+        await this.showWatchError(error.message);
       }
     }
     await this.updateStatus();
@@ -194,39 +230,168 @@ class Controller {
     this.states.set(key, { ...state, autoWatch: enabled });
   }
 
+  async refreshExternalWatchers() {
+    if (this.disposed || this.externalProbeActive) return;
+    this.externalProbeActive = true;
+    try {
+      for (const folder of this.api.workspace.workspaceFolders || []) {
+        const key = folderKey(folder);
+        const state = this.states.get(key);
+        if (!state?.external) continue;
+        let status;
+        try {
+          status = await this.runCli(['status', folder.uri.fsPath], folder.uri.fsPath);
+        } catch (_) {
+          continue;
+        }
+        if (this.disposed) return;
+        const current = this.states.get(key);
+        if (!current?.external) continue;
+        const watcher = watcherDetails(status);
+        if (watcher) {
+          this.states.set(key, { ...current, owner: watcher.owner, error: undefined });
+          continue;
+        }
+        this.states.set(key, { ...current, mode: 'stopped', external: false, owner: undefined });
+        await this.updateStatus();
+        if (current.autoWatch) {
+          try {
+            await this.startWatch(folder, false);
+          } catch (_) {
+            // startWatch already records and presents the failure.
+          }
+        }
+      }
+    } finally {
+      this.externalProbeActive = false;
+    }
+  }
+
+  async adoptRunningWatcher(folder) {
+    try {
+      const status = await this.runCli(['status', folder.uri.fsPath], folder.uri.fsPath);
+      if (this.disposed) return false;
+      const watcher = watcherDetails(status);
+      if (!watcher) return false;
+      const key = folderKey(folder);
+      const state = this.states.get(key) || {};
+      this.states.set(key, {
+        ...state,
+        mode: 'running',
+        external: true,
+        owner: watcher.owner,
+        error: undefined,
+      });
+      await this.updateStatus();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  async showWatchError(message) {
+    if (this.disposed) return;
+    this.output.appendLine('[watch error] ' + message);
+    const action = await this.api.window.showErrorMessage(
+      'Symbraid watcher failed: ' + message,
+      'Show Output',
+    );
+    if (action === 'Show Output') this.output.show(true);
+  }
+
   async startWatch(folder, persist = true) {
+    if (this.disposed) return undefined;
+    const key = folderKey(folder);
+    this.starting ||= new Map();
+    const inFlight = this.starting.get(key);
+    if (inFlight) return inFlight;
+    const operation = this._startWatch(folder, persist);
+    this.starting.set(key, operation);
+    try {
+      return await operation;
+    } finally {
+      if (this.starting.get(key) === operation) this.starting.delete(key);
+    }
+  }
+
+  async _startWatch(folder, persist = true) {
     const key = folderKey(folder);
     const current = this.processes.get(key);
     if (current && !childHasExited(current)) return current;
     if (current) this.processes.delete(key);
-    if (persist) await this.setAutoWatch(folder, true);
+    if (persist) {
+      try {
+        await this.setAutoWatch(folder, true);
+      } catch (error) {
+        const state = this.states.get(key) || {};
+        this.states.set(key, { ...state, mode: 'error', error: error.message });
+        await this.updateStatus();
+        await this.showWatchError(error.message);
+        throw error;
+      }
+    }
+    if (this.disposed) return undefined;
+    if (await this.adoptRunningWatcher(folder)) return undefined;
+    if (this.disposed) return undefined;
 
-    const executable = configuredExecutable(this.api, folder);
-    const child = spawnSymbraid(executable, ['watch', folder.uri.fsPath], folder.uri.fsPath);
+    let child;
+    try {
+      const executable = configuredExecutable(this.api, folder);
+      child = spawnSymbraid(executable, ['watch', folder.uri.fsPath], folder.uri.fsPath);
+    } catch (error) {
+      this.states.set(key, { mode: 'error', autoWatch: true, error: error.message });
+      await this.updateStatus();
+      await this.showWatchError(error.message);
+      throw error;
+    }
+
+    let stdout = '';
+    let stderr = '';
     this.processes.set(key, child);
-    this.states.set(key, { ...(this.states.get(key) || {}), mode: 'starting', autoWatch: true });
-    child.stdout?.on('data', (chunk) => this.output.append(chunk.toString()));
-    child.stderr?.on('data', (chunk) => this.output.append(chunk.toString()));
+    this.states.set(key, {
+      ...(this.states.get(key) || {}),
+      mode: 'starting',
+      autoWatch: true,
+      external: false,
+    });
+    child.stdout?.on('data', (chunk) => {
+      const text = chunk.toString();
+      stdout = appendDiagnosticTail(stdout, text);
+      this.output.append(text);
+    });
+    child.stderr?.on('data', (chunk) => {
+      const text = chunk.toString();
+      stderr = appendDiagnosticTail(stderr, text);
+      this.output.append(text);
+    });
     child.once('spawn', () => {
       const state = this.states.get(key) || {};
-      this.states.set(key, { ...state, mode: 'running', error: undefined });
+      this.states.set(key, { ...state, mode: 'running', external: false, error: undefined });
       void this.updateStatus();
     });
     child.once('error', (error) => {
       this.processes.delete(key);
-      this.states.set(key, { mode: 'error', autoWatch: true, error: error.message });
+      this.states.set(key, { mode: 'error', autoWatch: true, external: false, error: error.message });
       void this.updateStatus();
+      void this.showWatchError(error.message);
     });
-    child.once('close', (code, signal) => {
+    child.once('close', async (code, signal) => {
       if (this.processes.get(key) !== child) return;
       this.processes.delete(key);
+      if (code !== 0 && await this.adoptRunningWatcher(folder)) return;
       const state = this.states.get(key) || {};
+      const message = code === 0
+        ? undefined
+        : commandError(stderr, stdout, undefined, ['watch', folder.uri.fsPath])
+          || 'Symbraid watch exited with ' + (signal || code);
       this.states.set(key, {
         ...state,
         mode: code === 0 ? 'stopped' : 'error',
-        error: code === 0 ? undefined : 'Symbraid watch exited with ' + (signal || code),
+        external: false,
+        error: message,
       });
-      void this.updateStatus();
+      await this.updateStatus();
+      if (message) await this.showWatchError(message);
     });
     await this.updateStatus();
     return child;
@@ -281,6 +446,7 @@ class Controller {
   }
 
   async updateStatus() {
+    if (this.disposed) return;
     const folder = this.api.window.activeTextEditor
       ? this.api.workspace.getWorkspaceFolder(this.api.window.activeTextEditor.document.uri)
       : (this.api.workspace.workspaceFolders || [])[0];
@@ -294,14 +460,28 @@ class Controller {
     else if (state.mode === 'starting') this.status.text = '$(sync~spin) Symbraid: Starting';
     else if (state.mode === 'running') this.status.text = '$(radio-tower) Symbraid: Running';
     else this.status.text = '$(radio-tower) Symbraid: Stopped';
-    this.status.tooltip = state.error || 'Click to start or stop Symbraid watch';
+    this.status.tooltip = state.error
+      || (state.external
+        ? 'Watcher is running outside VS Code; use its owning process or service to stop it'
+        : 'Click to start or stop Symbraid watch');
   }
 
   async statusClick() {
     const folder = await this.chooseFolder();
     if (!folder) return;
-    if (this.processes.has(folderKey(folder))) await this.stopWatch(folder);
-    else await this.startWatch(folder);
+    const key = folderKey(folder);
+    if (this.processes.has(key)) {
+      await this.stopWatch(folder);
+      return;
+    }
+    const state = this.states.get(key) || {};
+    if (state.mode === 'running' && state.external && await this.adoptRunningWatcher(folder)) {
+      await this.api.window.showInformationMessage(
+        'Symbraid watcher is managed by another process or service. Stop it there before starting it from VS Code.',
+      );
+      return;
+    }
+    await this.startWatch(folder);
   }
 
   async chooseFolder() {
@@ -318,6 +498,9 @@ class Controller {
   }
 
   dispose() {
+    this.disposed = true;
+    clearInterval(this.externalProbeTimer);
+    this.starting?.clear();
     for (const child of this.processes.values()) child.kill();
     this.processes.clear();
     this.managePanel.dispose();
@@ -345,10 +528,13 @@ function deactivate() {
 module.exports = {
   Controller,
   activate,
+  appendDiagnosticTail,
+  commandError,
   deactivate,
   resolveExecutablePath,
   runCommand,
   spawnSymbraid,
   waitForChildExit,
   terminateChild,
+  watcherDetails,
 };

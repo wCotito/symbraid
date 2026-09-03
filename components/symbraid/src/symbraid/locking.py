@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import json
 import os
 import socket
@@ -17,30 +18,58 @@ class ProjectLock:
         self.timeout_seconds = max(0.0, timeout_seconds)
         self._file: Optional[BinaryIO] = None
 
+    @staticmethod
+    def _windows_share_violation(error: OSError) -> bool:
+        return os.name == "nt" and getattr(error, "winerror", None) in {32, 33}
+
+    @staticmethod
+    def _lock_contention(error: OSError) -> bool:
+        if os.name == "nt":
+            winerror = getattr(error, "winerror", None)
+            if winerror is not None:
+                return winerror in {32, 33}
+        return error.errno in {errno.EACCES, errno.EAGAIN}
+
+    def _wait_or_timeout(self, deadline: float, error: OSError) -> None:
+        if time.monotonic() >= deadline:
+            raise TimeoutError(f"Timed out waiting for project lock: {self.path}") from error
+        time.sleep(min(0.2, max(0.01, self.timeout_seconds)))
+
     def acquire(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        handle = self.path.open("a+b")
-        handle.seek(0, os.SEEK_END)
-        if handle.tell() == 0:
-            handle.write(b"0")
-            handle.flush()
         deadline = time.monotonic() + self.timeout_seconds
         while True:
             try:
+                handle = self.path.open("a+b")
+            except OSError as exc:
+                if not self._windows_share_violation(exc):
+                    raise
+                self._wait_or_timeout(deadline, exc)
+                continue
+            try:
+                handle.seek(0, os.SEEK_END)
+                if handle.tell() == 0:
+                    handle.write(b"0")
+                    handle.flush()
                 handle.seek(0)
+            except OSError:
+                handle.close()
+                raise
+            try:
                 if os.name == "nt":
                     import msvcrt
                     msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
                 else:
                     import fcntl
                     fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                self._file = handle
-                return
-            except (OSError, BlockingIOError):
-                if time.monotonic() >= deadline:
-                    handle.close()
-                    raise TimeoutError(f"Timed out waiting for project lock: {self.path}")
-                time.sleep(min(0.2, max(0.01, self.timeout_seconds)))
+            except OSError as exc:
+                handle.close()
+                if not self._lock_contention(exc):
+                    raise
+                self._wait_or_timeout(deadline, exc)
+                continue
+            self._file = handle
+            return
 
     def __enter__(self) -> "ProjectLock":
         self.acquire()
