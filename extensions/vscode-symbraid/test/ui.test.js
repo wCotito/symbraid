@@ -1,6 +1,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { loadManageState } = require('../manageState');
 
 const root = path.resolve(__dirname, '..');
 const host = fs.readFileSync(path.join(root, 'managePanel.js'), 'utf8');
@@ -21,4 +22,29 @@ for (const source of [host, client, extension]) {
   assert.ok(!source.toLowerCase().includes(['ki', 'lo'].join('')));
 }
 
-console.log('manage webview tests passed');
+(async () => {
+  const cwd = path.join(root, 'fixture');
+  const calls = [];
+  const recovered = await loadManageState(async (args) => {
+    calls.push(args);
+    if (args[0] === 'settings') return { status: 'ok', project: { path: cwd } };
+    return { status: 'ok', indexed: true };
+  }, cwd);
+  assert.deepStrictEqual(recovered.project.index_status, { status: 'ok', indexed: true });
+  assert.strictEqual(calls.length, 2);
+
+  const fallbackFailure = await loadManageState(async (args) => {
+    if (args[0] === 'settings') return { status: 'ok', project: { path: cwd, index_status: {} } };
+    throw new Error('status failed');
+  }, cwd);
+  assert.deepStrictEqual(fallbackFailure.project.index_status, { status: 'error', error: 'status failed' });
+
+  const settingsFailure = await loadManageState(async () => { throw new Error('settings failed'); }, cwd);
+  assert.strictEqual(settingsFailure.status, 'error');
+  assert.deepStrictEqual(settingsFailure.project.index_status, { status: 'error', error: 'settings failed' });
+
+  console.log('manage webview tests passed');
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

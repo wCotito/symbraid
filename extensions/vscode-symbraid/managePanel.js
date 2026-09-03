@@ -1,4 +1,5 @@
 const vscode = require('vscode');
+const { loadManageState } = require('./manageState');
 
 class ManagePanel {
   constructor(context, runCli, applyProject) {
@@ -29,7 +30,8 @@ class ManagePanel {
 
   async sendState(result = undefined) {
     if (!this.panel || !this.folder) return;
-    const state = await this.runCli(['settings', 'show', '--project', this.folder.uri.fsPath], this.folder.uri.fsPath);
+    const cwd = this.folder.uri.fsPath;
+    const state = await loadManageState(this.runCli, cwd);
     this.panel.webview.postMessage({ type: 'state', state, locale: this.locale, result });
   }
 
