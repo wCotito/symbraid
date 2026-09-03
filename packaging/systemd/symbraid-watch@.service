@@ -1,0 +1,15 @@
+[Unit]
+Description=Symbraid watcher for project %i
+After=default.target
+
+[Service]
+Type=simple
+EnvironmentFile=-%h/.config/symbraid/projects/%i.env
+ExecStart=/usr/bin/env symbraid watch ${SYMBRAID_PROJECT}
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target
