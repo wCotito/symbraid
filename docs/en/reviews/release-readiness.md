@@ -74,3 +74,29 @@ The same reviewer re-checked the corrected diff. The final verdict is **ready**,
 with no open P0, P1, P2, or P3 findings. The corrected suite has 36 passing Python
 tests with one platform-specific skip on the Windows host, plus passing VS Code,
 documentation parity/hash/link, version, and diff checks.
+
+## CLI output and watcher lifecycle correction
+
+A separate security reviewer traced the CLI serialization boundary. The first
+candidate missed Basic authorization forms and changed legitimate search text.
+The corrected boundary recursively redacts sensitive keyed values, applies
+text-pattern redaction only to errors, and is shared by both CLI entry points.
+Focused tests cover nested aliases, URL credentials, Basic and Bearer headers,
+mapping representations, successful search text, watcher events, and MCP
+errors.
+
+A separate watcher reviewer then performed repeated read-only reviews. The
+review found and verified fixes for unbounded diagnostic buffering, stale
+external-watcher state, misclassified lock I/O, incomplete startup diagnostics,
+concurrent starts, restart after disposal, post-open lock-file errors, and a
+race between an in-flight probe and explicit auto-watch disable. Starts are now
+single-flight per project, diagnostic tails are bounded, external owners are
+rechecked, and disposal or an explicit disable always wins over delayed work.
+
+The same reviewers rechecked the corrected boundaries. The local verdict is
+**ready**, with no open P0, P1, or P2 findings. Evidence includes 45 passing
+Python tests with one platform-specific skip on Windows, five passing repository
+tooling tests, passing MCP handshake and read-only checks, passing VS Code and
+webview tests, valid locale/hash/link checks, a built wheel and sdist, and a
+rebuilt VSIX. Hosted CodeQL and the Windows/Linux CI matrix remain release
+workflow gates.

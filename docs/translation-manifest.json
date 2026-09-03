@@ -184,11 +184,11 @@
     },
     {
       "path": "docs/en/reviews/release-readiness.md",
-      "source_sha256": "05f38a66685d470db76918820b4091391d88cbb9c1fea7dcfbf32b3380ee5aba",
+      "source_sha256": "264b183785f4148dbb09774cffe56e614f88edd4021c75dfc4146c365c6a2dae",
       "translations": {
         "ru": {
           "path": "docs/ru/reviews/release-readiness.md",
-          "sha256": "d488ca9a2bec7ef46c1a67aa2550b71e99fb27fbc772ba700a86d1d9d091e48a",
+          "sha256": "1e13a60451c838807d6968aa6495434e3deacbef65824f5e6794a9ae097c31a8",
           "status": "current"
         }
       }
