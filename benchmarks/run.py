@@ -190,6 +190,18 @@ def normalize_hit_paths(hits: list[dict[str, Any]], fixture: Path) -> list[dict[
         normalized.append(item)
     return normalized
 
+def unique_hits_by_path(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep the highest-ranked hit for each file-level judgment."""
+    seen: set[str] = set()
+    unique: list[dict[str, Any]] = []
+    for hit in hits:
+        path = hit["path"].replace("\\", "/")
+        if path in seen:
+            continue
+        seen.add(path)
+        unique.append(hit)
+    return unique
+
 def reciprocal_rank(paths: list[str], relevant: set[str], limit: int | None = None) -> float:
     ranked = paths if limit is None else paths[:limit]
     for rank, path in enumerate(ranked, 1):
@@ -205,15 +217,6 @@ def ndcg(paths: list[str], relevant: set[str], k: int) -> float:
     return dcg / ideal if ideal else 0.0
 
 
-def evaluate(paths: list[str], relevant: set[str], k: int) -> dict[str, float]:
-    """Keep the original per-k API for small adapter tests and callers."""
-    top = paths[:k]
-    found = len(set(top) & relevant)
-    return {
-        f"recall@{k}": found / len(relevant) if relevant else 0.0,
-        "mrr": reciprocal_rank(paths, relevant),
-        f"ndcg@{k}": ndcg(paths, relevant, k),
-    }
 
 
 def context_efficiency(hits: list[dict[str, Any]], relevant: set[str]) -> float | str:
@@ -231,6 +234,7 @@ def context_efficiency(hits: list[dict[str, Any]], relevant: set[str]) -> float 
 
 
 def quality_metrics(hits: list[dict[str, Any]], query: dict[str, Any]) -> dict[str, float | str]:
+    hits = unique_hits_by_path(hits)
     paths = [hit["path"].replace("\\", "/") for hit in hits]
     relevant = set(query["relevant"])
     file_relevant = set(query.get("relevant_files", query["relevant"]))
@@ -269,7 +273,7 @@ def empty_quality() -> dict[str, str]:
 def empty_performance(warm_repeats: int) -> dict[str, Any]:
     empty = {
         "warm_repeats": warm_repeats,
-        "warm_query_latency_ms": percentiles([]),
+        "warmed_cli_invocation_latency_ms": percentiles([]),
         "response_size_bytes": percentiles([]),
         "cold_index_wall_ms": NOT_COLLECTED,
         "cold_index_cpu_ms": NOT_COLLECTED,
@@ -586,7 +590,7 @@ def run_adapter(
         response_sizes: list[float] = []
         last_hits: list[dict[str, Any]] = []
         query_text = query.get(adapter.get("query_field", "query"), query["query"])
-        for _ in range(warm_repeats):
+        for repetition in range(warm_repeats + 1):
             args = [
                 executable,
                 *substitute(
@@ -613,21 +617,23 @@ def run_adapter(
                 hits = normalize_hit_paths(hits, fixture)
             except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
                 return {**base, "status": "not_run", "reason": f"invalid adapter output: {exc}", "queries": []}
-            last_hits = hits
+            last_hits = unique_hits_by_path(hits)
+            if repetition == 0:
+                continue  # Excluded warm-up; measured calls still include CLI startup.
             samples.append(float(measured["wall_ms"]))
             response_sizes.append(float(measured["response_size_bytes"]))
         metrics = quality_metrics(last_hits, query)
         query_results.append({
             "id": query["id"],
             "warm_repeats": warm_repeats,
-            "latency_ms": percentiles(samples),
+            "warmed_cli_invocation_latency_ms": percentiles(samples),
             "response_size_bytes": percentiles(response_sizes),
             "metrics": metrics,
             "paths": [hit["path"].replace("\\", "/") for hit in last_hits],
         })
         all_latencies.extend(samples)
         all_response_sizes.extend(response_sizes)
-    performance["warm_query_latency_ms"] = percentiles(all_latencies)
+    performance["warmed_cli_invocation_latency_ms"] = percentiles(all_latencies)
     performance["response_size_bytes"] = percentiles(all_response_sizes)
     index = phase_measure(adapter, config, fixture, "index")
     performance["cold_index"] = index

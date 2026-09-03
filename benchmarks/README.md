@@ -1,8 +1,8 @@
 # Symbraid benchmark harness
 
 This directory contains a committed, MIT-licensed polyglot fixture and a
-stdlib-only harness for code-search comparisons. It is intentionally an
-execution scaffold: the repository currently has no benchmark results.
+stdlib-only harness for code-search comparisons. The raw execution artifacts are intentionally ignored; the reviewed summary lives in
+`docs/en/benchmarks.md` and `docs/ru/benchmarks.md`.
 
 ## Status
 
@@ -61,10 +61,14 @@ benchmark report.
 
 ## Metrics
 
-For each query the runner calculates nDCG@10, MRR@10, Recall@1/5/10,
-Precision@5/10, file recall, and context efficiency when the adapter output
-contains enough evidence. The performance schema supports at least five warm
-repeats with p50/p95/p99 latency and response-size percentiles, cold-index wall
+For file-level judgments, the runner first keeps the highest-ranked hit per
+file, then calculates nDCG@10, MRR@10, Recall@1/5/10, Precision@5/10, file
+recall, and context efficiency when the adapter output contains enough evidence.
+All normalized quality metrics are tested to remain in `[0, 1]`. Each query gets
+one excluded warm-up followed by at least five measured CLI invocations.
+Their p50/p95/p99 latency includes process/model startup and is therefore named
+warmed CLI invocation latency, not in-process query latency. The performance
+schema also supports response-size percentiles, cold-index wall
 and CPU time, files/LOC per second, peak RSS, disk bytes per chunk, startup,
 incremental convergence, and idle memory. Unsupported or unmeasured values are
 explicit `not_collected` (or `not_comparable` for an unsupported controlled
@@ -74,8 +78,9 @@ Example commands:
 
 ~~~text
 python benchmarks/run.py --dry-run
-python benchmarks/run.py --execute --adapter symbraid --mode controlled \
-  --output benchmarks/results/symbraid-controlled.json
+python benchmarks/run.py --execute --adapter symbraid \
+  --adapter ripgrep-lexical-control --mode controlled \
+  --output benchmarks/results/controlled-snapshot.json
 ~~~
 
 An executed report must include tool versions, provider/model, hardware, OS,

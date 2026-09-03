@@ -23,6 +23,8 @@ jobs:
         run: python scripts/check_versions.py
       - name: Check benchmark dry-run
         run: python benchmarks/run.py --dry-run
+      - name: Test benchmark metrics
+        run: python -m unittest discover -s benchmarks -p "test_*.py"
       - name: Compile repository harnesses
         run: python -m py_compile scripts/sync_docs.py scripts/check_versions.py benchmarks/run.py benchmarks/download_codesearchnet.py
       - name: Build Python wheel and sdist
