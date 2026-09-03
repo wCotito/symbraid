@@ -15,11 +15,14 @@ impact plans.
 ## Setup
 
 Install the extension artifact built from `extensions/vscode-symbraid`, then
-set `symbraid.executablePath` only when the `symbraid` command is not on `PATH`.
-Leave it empty to use the normal launcher and its documented compatibility
-fallback. Keep credentials out of settings and workspace files.
+set `symbraid.executablePath` only when the `symbraid` command is not on
+`PATH`. An empty value resolves `symbraid` through `PATH`. Keep credentials
+out of settings and workspace files.
 
-Use the extension's manage and watcher commands for a human-readable status.
+Use the extension's Manage and watcher commands for a human-readable status.
 For indexing, backend changes, or recovery, follow the [CLI guide](../cli.md)
 and [operations guide](../operations/agent-deployment.md).
 
+The Manage Overview reads the current `project.index_status` payload from the
+CLI, including index completeness, counts, active backend, and watcher
+ownership.

@@ -50,3 +50,10 @@ Watcher, index, refresh и migration используют lock проекта и
 параллельно. status и search read-only. Symbraid изменяет только созданные им
 managed sources и не трогает неизвестные Qdrant collections или внешние LanceDB
 directories без отдельного подтверждения.
+
+## Имена коллекций
+
+Managed Qdrant sources используют префикс коллекции `symbraid-<project-id>`.
+Структурное изменение настроек создаёт новый source `symbraid-*` и сохраняет
+предыдущий source для отката. Сгенерированный source никогда не использует
+коллекцию, принадлежащую другому проекту.

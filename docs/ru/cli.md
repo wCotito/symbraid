@@ -13,7 +13,7 @@ symbraid paths
 ~~~text
 symbraid project register /absolute/project
 symbraid project list
-symbraid project watch /absolute/project on
+symbraid project autowatch /absolute/project on
 symbraid source list /absolute/project
 symbraid source use /absolute/project managed-lancedb
 ~~~

@@ -8,11 +8,11 @@
   "files": [
     {
       "path": "docs/en/README.md",
-      "source_sha256": "452a01c134481c3541a4c1fda105e60199733de12ab6671000ecc4806e5aaae2",
+      "source_sha256": "296514f966eee39aaeb3f5c43027f46348ac11ed3e3ad96e3a740cfe3cc97746",
       "translations": {
         "ru": {
           "path": "docs/ru/README.md",
-          "sha256": "b7d10cef5b1216c78c1920c04e85be236b75647dd0c8d22658c0aa87241a1d31",
+          "sha256": "3bc31a3ac1bdf05e3208321668c1f4fd5c7e46a1b39e5d6bd2e4c0f7b914673b",
           "status": "current"
         }
       }
@@ -30,33 +30,33 @@
     },
     {
       "path": "docs/en/benchmarks.md",
-      "source_sha256": "8169699ee5089246783e3859dbbd7055edeaa3a81f9bfc222d3bc6c5aad07a39",
+      "source_sha256": "04647f067e66368c3fa434227026d1c05745f6ffdce4736921869e7150c941af",
       "translations": {
         "ru": {
           "path": "docs/ru/benchmarks.md",
-          "sha256": "e50bb33c49329c2f6ae1b670184289500e7104cc05fdaf1a1cf109e7dac6dc68",
+          "sha256": "1830674792018c57ec3367047f77d4207ba8e97431f33d42fbf14c24d3a1e999",
           "status": "current"
         }
       }
     },
     {
       "path": "docs/en/cli.md",
-      "source_sha256": "bb238c93a1527070118d5210dd5720ae3f6e16c6be6b1b693973809c22eb4644",
+      "source_sha256": "762e00730a9f239ada200314fa6c763f35e500fcc3e7bdc77644cf383e0fee26",
       "translations": {
         "ru": {
           "path": "docs/ru/cli.md",
-          "sha256": "d32a1f3d444c794e2739248c4c1b5f7f52826da7bff26294b84b65a04e4c8e79",
+          "sha256": "7fe77a1715369039aef84e8cd501c3933524fddb6b3e2442466acaf2ef293f0e",
           "status": "current"
         }
       }
     },
     {
       "path": "docs/en/configuration.md",
-      "source_sha256": "bc5ec52a0a0bb93c2f4126ab08d3c2042efa6ae04174327303a7dfacb25343f4",
+      "source_sha256": "7a8381561182740672d5d1014b4ab657ae9c31a3af4f4b676ed596a7a8e453e8",
       "translations": {
         "ru": {
           "path": "docs/ru/configuration.md",
-          "sha256": "1b2213e853ea4e25c63ee3f06c422df3e0431a1a1ac6a440c094c320131b4980",
+          "sha256": "a41878c575a9bd8a390c5f98650b57cec500c96c64510fd64c30c5a74d40ff99",
           "status": "current"
         }
       }
@@ -85,11 +85,11 @@
     },
     {
       "path": "docs/en/integrations/codex.md",
-      "source_sha256": "5b2583af67cdffabee458a377f76eb7704d0038e40e9801898c0cb95752a421a",
+      "source_sha256": "ef552ee0fbd95ccd0dc845638b00dc8e659f289b31d2a427956402a1d53986d9",
       "translations": {
         "ru": {
           "path": "docs/ru/integrations/codex.md",
-          "sha256": "9d24ebfcd4544fb702673ad1bc6d7713d97fe43cec73cfd6beabdd5f76035219",
+          "sha256": "64eea58506e182343939254f9f7484c0382cc7b8336b921f80514a1333f3d9af",
           "status": "current"
         }
       }
@@ -107,11 +107,11 @@
     },
     {
       "path": "docs/en/integrations/vscode.md",
-      "source_sha256": "8103ecd2311945b9cee9489cdcc747f5972089411b7eafaedf1d180a92bc0d4b",
+      "source_sha256": "5db112ec838b4cf1e2ed1db83d7d134e6916ae82185ea7f1b6ed1d68ce6e84e3",
       "translations": {
         "ru": {
           "path": "docs/ru/integrations/vscode.md",
-          "sha256": "3198cda875126f779a828aa73a1cb12c15ca75a127e072b7888060c0071f6aea",
+          "sha256": "19400119f908b55459bbc3fbda41e2806bd28038a339376f906e6765460e6eac",
           "status": "current"
         }
       }
@@ -172,6 +172,17 @@
       }
     },
     {
+      "path": "docs/en/project/naming.md",
+      "source_sha256": "ddc38b7a1db476f8345b8bf821cad78ffc35ec313a1968247a2d810ab2d17953",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/project/naming.md",
+          "sha256": "f959e0ca8a4e85a8eef1b4edcce8910a5c570eb4fc768aa780e339c7acc37359",
+          "status": "current"
+        }
+      }
+    },
+    {
       "path": "docs/en/project/security.md",
       "source_sha256": "4db150c5f303a909520bdb93ff7a5f3e801806081ba26fce754010d71bcfdbf7",
       "translations": {
@@ -184,11 +195,11 @@
     },
     {
       "path": "docs/en/reviews/release-readiness.md",
-      "source_sha256": "6238dd878c45ea7203fe8c31b65df64b7078cdafa7de83347b501269995a8f1a",
+      "source_sha256": "30552c9904f7eccfd08c64d4f67e64889b6667ed30170a60f4f371e4bb51d52d",
       "translations": {
         "ru": {
           "path": "docs/ru/reviews/release-readiness.md",
-          "sha256": "7c716e41bebf4036ebf0a8fb0ee61dac67eb44c42368978879dd060a9d6bafc6",
+          "sha256": "331644ac7f59446a439f700d42dc7ecdb08a4f32016cc5ff281e72bfddaab454",
           "status": "current"
         }
       }

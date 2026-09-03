@@ -61,3 +61,10 @@ mutate one project concurrently. `status` and `search` are read-only.
 Symbraid changes only managed sources it created. It never alters unknown
 Qdrant collections or external LanceDB directories without an explicit,
 operator-confirmed action.
+
+## Collection names
+
+Managed Qdrant sources use the `symbraid-<project-id>` collection prefix.
+Structural settings changes create a new `symbraid-*` source and retain the
+previous source for rollback. A generated source never reuses a collection
+owned by another project.

@@ -1,48 +1,80 @@
 # Бенчмарки
 
-Закоммиченный harness — воспроизводимый каркас, а не заявление о результатах.
-Он использует MIT-лицензированный polyglot fixture в
-[`../../benchmarks/fixture`](../../benchmarks/fixture), manifest версий и
-лицензий и adapters с явными командами подготовки.
+Symbraid включает воспроизводимый benchmark harness и MIT-лицензированный
+polyglot fixture в [`../../benchmarks/fixture`](../../benchmarks/fixture).
+Первый измеренный срез ниже намеренно неполный: он сравнивает Symbraid с
+ripgrep как лексическим контролем. Это ещё не полный рейтинг конкурентов.
 
-На текущем состоянии репозитория benchmark ещё не запускался. Нет заявленных
-latency, recall, throughput или сравнений с конкурентами. Первый запуск должен
-сохранить версии инструментов, model/provider, hardware, OS, хэши fixture и
-query set и режим до записи результата.
+## Локальный срез — 2026-09-03
 
-## Два режима
+В controlled-режиме использовались закоммиченный fixture, шесть запросов с
+ручной оценкой релевантности, `top_k=10`, один исключённый warm-up и пять
+измеряемых CLI invocation на каждый запрос. Symbraid 0.3.0 работал с LanceDB и FastEmbed, модель
+`jinaai/jina-embeddings-v2-base-code` (768 измерений). Лексический контроль —
+ripgrep 15.2.0. Прогон выполнен из проверяемого рабочего дерева на Windows 11
+x64, Python 3.10.5, AMD Ryzen 7 3700X и 64 ГиБ RAM.
 
-1. **Out-of-box:** документированные defaults каждого инструмента.
-2. **Controlled:** одинаковые provider/model, chunking и query set там, где это
-   поддерживается. Несовместимые настройки получают `not_comparable`, а не
-   молча нормализуются.
+| Метрика | Symbraid | ripgrep control |
+| --- | ---: | ---: |
+| nDCG@10 | 0.830 | 0.634 |
+| MRR@10 | 0.867 | 0.722 |
+| Recall@1 | 0.087 | 0.069 |
+| Recall@5 | 0.604 | 0.294 |
+| Recall@10 | 0.886 | 0.622 |
+| Precision@5 | 0.867 | 0.567 |
+| Precision@10 | 0.700 | 0.600 |
+| Warmed CLI invocation p50 | 5 435 мс | 52 мс |
+| Warmed CLI invocation p95 | 5 930 мс | 70 мс |
+| Warmed CLI invocation p99 | 7 082 мс | 189 мс |
+| Медианный размер ответа | 6 859 байт | 819 байт |
 
-Dry plan без внешних инструментов:
+На этом небольшом fixture Symbraid дал более качественное семантическое
+ранжирование, а ripgrep оказался значительно быстрее и вернул меньше контекста.
+Эти числа полезны как regression baseline, но не как универсальное заявление о
+производительности: системы выполняют разную поисковую работу, корпус мал, а
+измерения сделаны на одной машине.
 
-~~~text
-python benchmarks/run.py --dry-run
-~~~
+В этом срезе не измерялись cold indexing, CPU time, throughput, peak RSS, disk
+bytes per chunk, startup, incremental convergence, idle memory и context
+efficiency. Индекс Symbraid был подготовлен вне измеряемого harness, поэтому
+время индексации не выводится из setup-логов. Изолированные прогоны Codanna,
+open-codebase-index и Zilliz Claude Context с зафиксированными версиями ещё
+предстоит выполнить.
 
-Реальный запуск требует явного флага и пишет raw output только в игнорируемый
-каталог `benchmarks/results/`:
+Хэши provenance, записанные harness:
 
-~~~text
-python benchmarks/run.py --execute --mode out-of-box --output benchmarks/results/run.json
-~~~
+- fixture: `417d14d41e45cc581f5081c40c692d99dc28b1e1e20458cb4501e3cd4c83e261`;
+- набор запросов: `a4a6bf8605d5152ad7d5feb0ab839d334fb5862a8a59aa3914782f70cd6343e5`;
+- manifest конкурентов: `c0271a4fb85f9ed9e8c26f639b70021a0e511bfeb31fd74332e0c2304ac0f185`;
+- harness: `4449ae0ddc314f2fa3bc6726eb9c90de27972e55d9bbdcf9651af95652c5e3a7`.
 
-## Метрики
+Raw results остаются в игнорируемом каталоге `benchmarks/results/`, потому что
+могут содержать локальные пути машины. Команды воспроизведения измеренной пары:
 
-Harness поддерживает nDCG@10, MRR@10, Recall@1/5/10, Precision@5/10, file
-recall и context efficiency. Performance schema включает минимум пять warm
-repeats, p50/p95/p99, cold-index wall/CPU, files/LOC per second, peak RSS, disk
-bytes per chunk, startup, incremental convergence, idle memory и response size.
-Неполученные значения помечаются `not_collected`, а неподдерживаемый controlled
-track — `not_comparable`; нули и выдуманные результаты не используются.
+```text
+python benchmarks/run.py --execute --adapter symbraid --adapter ripgrep-lexical-control --mode controlled --output benchmarks/results/controlled-snapshot.json
+```
 
-Опциональный CodeSearchNet subset закреплён в
-`benchmarks/external/codesearchnet-manifest.json`; download выполняется только
-явной командой `python benchmarks/download_codesearchnet.py --download`.
-Human judgments и license provenance сохраняются.
+## Методика
 
-Правила adapters и provenance описаны в
-[`../../benchmarks/README.md`](../../benchmarks/README.md).
+Поддерживаются два режима:
+
+1. **Out-of-box:** каждый инструмент использует документированную конфигурацию
+   по умолчанию.
+2. **Controlled:** инструменты используют одинаковые корпус, relevance
+   judgments, запросы, лимит результатов, provider/model и chunking там, где
+   такие настройки доступны. Неподдерживаемые ограничения получают
+   `not_comparable`.
+
+Схема качества включает nDCG@10, MRR@10, Recall@1/5/10, Precision@5/10, file
+recall и context efficiency. Перед минимум пятью измеряемыми CLI invocation выполняется один исключённый
+warm-up. Значения p50/p95/p99 включают запуск процесса и модели: это не
+in-process query latency. Схема также хранит размер ответа, cold indexing,
+throughput, peak RSS, storage per chunk, startup, incremental convergence и
+idle memory. Отсутствующие наблюдения помечаются `not_collected`, а не нулём и
+не выдуманным значением.
+
+Опциональный subset CodeSearchNet отдельно зафиксирован в
+[`benchmarks/external/codesearchnet-manifest.json`](../../benchmarks/external/codesearchnet-manifest.json)
+и скачивается только явным opt-in helper. Правила adapters, изоляции и
+provenance описаны в [`benchmarks/README.md`](../../benchmarks/README.md).
