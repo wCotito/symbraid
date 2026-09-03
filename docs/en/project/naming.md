@@ -7,15 +7,16 @@ public read-only registry APIs immediately before the release-readiness review:
 
 | Registry | Exact query | Result |
 | --- | --- | --- |
-| GitHub repositories | `symbraid` in repository name | 0 results |
+| GitHub repositories | `wCotito/symbraid` | Created for this project |
 | PyPI | distribution `symbraid` | HTTP 404 (not registered) |
 | npm | unscoped package `symbraid` | HTTP 404 (not registered) |
 | VS Code Marketplace | extension ID `symbraid.symbraid` | 0 results |
 | Official MCP Registry | search `symbraid` | 0 servers |
 
-The chosen public identifiers are host-neutral: repository and Python
-package/CLI `symbraid`, VS Code extension `symbraid.symbraid`, Codex plugin
-`symbraid-search`, and MCP server `io.github.symbraid-project/symbraid`.
+The public identifiers use the project name and verified GitHub owner:
+repository `wCotito/symbraid`, Python package/CLI `symbraid`, VS Code extension
+`symbraid.symbraid`, Codex plugin `symbraid-search`, and MCP server
+`io.github.wcotito/symbraid`.
 
 Availability is time-sensitive and does not reserve a name. Repeat every check
 immediately before publishing or creating publisher/package accounts. A clean

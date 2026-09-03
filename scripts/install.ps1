@@ -74,7 +74,7 @@ if (-not $SkipExtension) {
 
         Invoke-Checked 'npx.cmd' @(
             'vsce', 'package', '--no-dependencies', '--allow-missing-repository',
-            '--baseContentUrl', 'https://github.com/symbraid-project/symbraid/blob/main/extensions/vscode-symbraid',
+            '--baseContentUrl', 'https://github.com/wCotito/symbraid/blob/main/extensions/vscode-symbraid',
             '-o', $vsix
         )
         if (-not (Test-Path -LiteralPath $vsix)) {

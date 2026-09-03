@@ -1,6 +1,6 @@
 # Symbraid
 
-[English](https://github.com/symbraid-project/symbraid/blob/main/docs/en/README.md) | [Русский](https://github.com/symbraid-project/symbraid/blob/main/docs/ru/README.md)
+[English](https://github.com/wCotito/symbraid/blob/main/docs/en/README.md) | [Русский](https://github.com/wCotito/symbraid/blob/main/docs/ru/README.md)
 
 Symbraid — локальный семантический индекс для программных репозиториев. Он
 превращает проект в поисковый источник знаний для разработчиков, IDE и любых

@@ -8,11 +8,11 @@
   "files": [
     {
       "path": "docs/en/README.md",
-      "source_sha256": "296514f966eee39aaeb3f5c43027f46348ac11ed3e3ad96e3a740cfe3cc97746",
+      "source_sha256": "5476d09bd1e706703a484c3975a8205d82ee7091851535d98c11f5dc692217f6",
       "translations": {
         "ru": {
           "path": "docs/ru/README.md",
-          "sha256": "3bc31a3ac1bdf05e3208321668c1f4fd5c7e46a1b39e5d6bd2e4c0f7b914673b",
+          "sha256": "d93e2c04adee077e37835f2bd1556a9d5a80f8d17dc44b91726650ff928e3a5e",
           "status": "current"
         }
       }
@@ -30,11 +30,11 @@
     },
     {
       "path": "docs/en/benchmarks.md",
-      "source_sha256": "04647f067e66368c3fa434227026d1c05745f6ffdce4736921869e7150c941af",
+      "source_sha256": "05591e28f2a663d8e585a80f0dee3f9271cdb523519d1aa508f9a583c3d85510",
       "translations": {
         "ru": {
           "path": "docs/ru/benchmarks.md",
-          "sha256": "1830674792018c57ec3367047f77d4207ba8e97431f33d42fbf14c24d3a1e999",
+          "sha256": "e03a5734744ae3fe858b2a9b1a05542cda3a1394cbad5dbe6f1ba75ed118d614",
           "status": "current"
         }
       }
@@ -74,33 +74,33 @@
     },
     {
       "path": "docs/en/installation.md",
-      "source_sha256": "49f4e0a3b1caad3120a93d251b0d4e431ddbcc3313b098033d44c9e3171b9602",
+      "source_sha256": "f11ff753c2ae91bc7117d705aaecd9c7a24e12678e7cdcf7e6defa31e058ca5c",
       "translations": {
         "ru": {
           "path": "docs/ru/installation.md",
-          "sha256": "f4743ae9032246ea69d454c193ad37680d3739d08ffd0b3c4f768c9be73780c5",
+          "sha256": "8c87575021396a5c11358bdabebd6530437afeec91e7ed2090188d4bb9c2b25a",
           "status": "current"
         }
       }
     },
     {
       "path": "docs/en/integrations/codex.md",
-      "source_sha256": "ef552ee0fbd95ccd0dc845638b00dc8e659f289b31d2a427956402a1d53986d9",
+      "source_sha256": "18aab563018922282786344697c4c594a03bbbc9e98cf15880576f111a2711e5",
       "translations": {
         "ru": {
           "path": "docs/ru/integrations/codex.md",
-          "sha256": "64eea58506e182343939254f9f7484c0382cc7b8336b921f80514a1333f3d9af",
+          "sha256": "fdc0fd19da62e721d589ae00429b6ade6a356f9d6baf368f5965bd730a570b1e",
           "status": "current"
         }
       }
     },
     {
       "path": "docs/en/integrations/mcp.md",
-      "source_sha256": "4f4ba1c1ec458df5e13673e96d9fa285b0df39f9c9e155f4b177792634df8534",
+      "source_sha256": "1f407e62a85441bb8936b175e4e2cd54b9749c28f2a35aa2047b147f1d0b9e87",
       "translations": {
         "ru": {
           "path": "docs/ru/integrations/mcp.md",
-          "sha256": "ee3858bf0865dad715421a6e765c176fa605bb5f8f59ab11a52afca7ac19cfc0",
+          "sha256": "8beffbd4940da1380e7af9742563b38a4a8f1cd9f7d7baf65dbd3d8b74c49d88",
           "status": "current"
         }
       }
@@ -173,11 +173,11 @@
     },
     {
       "path": "docs/en/project/naming.md",
-      "source_sha256": "ddc38b7a1db476f8345b8bf821cad78ffc35ec313a1968247a2d810ab2d17953",
+      "source_sha256": "e24ee5b742806ab3e9636ba632f782ef98ef396ec3b715e624ba3d15004b2753",
       "translations": {
         "ru": {
           "path": "docs/ru/project/naming.md",
-          "sha256": "f959e0ca8a4e85a8eef1b4edcce8910a5c570eb4fc768aa780e339c7acc37359",
+          "sha256": "78281f0fae45b7854f39939283d40ee85b9d0ca70efe79c7266acfef9fee9ca1",
           "status": "current"
         }
       }

@@ -62,7 +62,7 @@ Registry, model cache и managed indexes сохраняются. Изменен�
 ## Codex marketplace
 
 ~~~powershell
-codex plugin marketplace add symbraid-project/symbraid --ref main
+codex plugin marketplace add wCotito/symbraid --ref main
 codex plugin add symbraid-search@symbraid
 ~~~
 

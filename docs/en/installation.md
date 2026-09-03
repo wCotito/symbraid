@@ -68,7 +68,7 @@ action.
 After the repository is made available to your Codex installation:
 
 ```powershell
-codex plugin marketplace add symbraid-project/symbraid --ref main
+codex plugin marketplace add wCotito/symbraid --ref main
 codex plugin add symbraid-search@symbraid
 ```
 

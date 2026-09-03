@@ -8,7 +8,7 @@
       "display_name": "Symbraid",
       "version": "working-tree",
       "license": "MIT",
-      "source_url": "https://github.com/symbraid-project/symbraid",
+      "source_url": "https://github.com/wCotito/symbraid",
       "version_source": "local checkout under test",
       "adapter": "adapters/symbraid.json",
       "notes": "Record the exact commit before a public run."

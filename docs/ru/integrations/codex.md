@@ -18,4 +18,4 @@ source. Ядро владеет project identity, выбором source, сов�
 ошибке используйте [диагностику](../operations/troubleshooting.md); не
 сбрасывайте индекс и не добавляйте второй source для обхода ошибки клиента.
 
-MCP server id: `io.github.symbraid-project/symbraid`.
+MCP server id: `io.github.wcotito/symbraid`.

@@ -20,4 +20,4 @@ the active source before searching. If the server is unavailable, use the
 [troubleshooting guide](../operations/troubleshooting.md); do not reset an
 index or add a second source to work around a client error.
 
-MCP server identifier: `io.github.symbraid-project/symbraid`.
+MCP server identifier: `io.github.wcotito/symbraid`.

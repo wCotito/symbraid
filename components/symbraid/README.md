@@ -9,4 +9,4 @@ The installed commands are `symbraid` and `symbraid-mcp`.
 
 Documentation: [English](../../docs/en/README.md) | [Russian](../../docs/ru/README.md)
 
-<!-- mcp-name: io.github.symbraid-project/symbraid -->
+<!-- mcp-name: io.github.wcotito/symbraid -->

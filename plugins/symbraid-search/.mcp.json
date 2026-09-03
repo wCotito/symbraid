@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "io.github.symbraid-project/symbraid": {
+    "io.github.wcotito/symbraid": {
       "command": "symbraid",
       "args": ["mcp", "--transport", "stdio"]
     }

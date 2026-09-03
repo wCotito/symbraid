@@ -29,7 +29,7 @@ configuration documented for your version.
 In the MCP server section of the Codex configuration (TOML shape):
 
 ```toml
-[mcp_servers."io.github.symbraid-project/symbraid"]
+[mcp_servers."io.github.wcotito/symbraid"]
 command = "symbraid"
 args = ["mcp", "--transport", "stdio"]
 ```
@@ -40,7 +40,7 @@ Claude Desktop uses an `mcpServers` JSON object. Claude Code can register the
 same command with its CLI:
 
 ```text
-claude mcp add io.github.symbraid-project/symbraid -- symbraid mcp --transport stdio
+claude mcp add io.github.wcotito/symbraid -- symbraid mcp --transport stdio
 ```
 
 Equivalent JSON shape for a Desktop configuration is:
@@ -48,7 +48,7 @@ Equivalent JSON shape for a Desktop configuration is:
 ```json
 {
   "mcpServers": {
-    "io.github.symbraid-project/symbraid": {
+    "io.github.wcotito/symbraid": {
       "command": "symbraid",
       "args": ["mcp", "--transport", "stdio"]
     }
@@ -63,7 +63,7 @@ For a workspace `.vscode/mcp.json`, use the VS Code `servers` shape:
 ```json
 {
   "servers": {
-    "io.github.symbraid-project/symbraid": {
+    "io.github.wcotito/symbraid": {
       "type": "stdio",
       "command": "symbraid",
       "args": ["mcp", "--transport", "stdio"]
@@ -79,7 +79,7 @@ Cursor's `.cursor/mcp.json` uses the familiar `mcpServers` shape:
 ```json
 {
   "mcpServers": {
-    "io.github.symbraid-project/symbraid": {
+    "io.github.wcotito/symbraid": {
       "command": "symbraid",
       "args": ["mcp", "--transport", "stdio"]
     }
@@ -94,7 +94,7 @@ In the Windsurf MCP configuration, use the same stdio command:
 ```json
 {
   "mcpServers": {
-    "io.github.symbraid-project/symbraid": {
+    "io.github.wcotito/symbraid": {
       "command": "symbraid",
       "args": ["mcp", "--transport", "stdio"]
     }

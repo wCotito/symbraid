@@ -100,7 +100,7 @@ def write_provenance(dist: Path, files: list[Path], stamp: str, commit: str) -> 
                     "workflow": os.environ.get("GITHUB_WORKFLOW", "local"),
                     "ref": os.environ.get("GITHUB_REF", "local"),
                 },
-                "resolvedDependencies": [{"uri": "git+https://github.com/symbraid-project/symbraid", "digest": {"sha1": commit}}],
+                "resolvedDependencies": [{"uri": "git+https://github.com/wCotito/symbraid", "digest": {"sha1": commit}}],
             },
             "runDetails": {
                 "builder": {"id": os.environ.get("GITHUB_WORKFLOW_REF", "local")},

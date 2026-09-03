@@ -7,16 +7,16 @@ read-only API реестров непосредственно перед review 
 
 | Реестр | Точный запрос | Результат |
 | --- | --- | --- |
-| GitHub repositories | `symbraid` в имени repository | 0 результатов |
+| GitHub repositories | `wCotito/symbraid` | Создан для этого проекта |
 | PyPI | distribution `symbraid` | HTTP 404 (не зарегистрирован) |
 | npm | unscoped package `symbraid` | HTTP 404 (не зарегистрирован) |
 | VS Code Marketplace | extension ID `symbraid.symbraid` | 0 результатов |
 | Official MCP Registry | поиск `symbraid` | 0 servers |
 
-Выбранные публичные идентификаторы не привязаны к пользователю или хосту:
-repository и Python package/CLI `symbraid`, VS Code extension
+Публичные идентификаторы используют имя проекта и подтверждённого GitHub owner:
+repository `wCotito/symbraid`, Python package/CLI `symbraid`, VS Code extension
 `symbraid.symbraid`, Codex plugin `symbraid-search` и MCP server
-`io.github.symbraid-project/symbraid`.
+`io.github.wcotito/symbraid`.
 
 Доступность меняется со временем и не резервирует имя. Все проверки нужно
 повторить непосредственно перед публикацией или созданием publisher/package

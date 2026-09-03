@@ -45,7 +45,7 @@ open-codebase-index и Zilliz Claude Context с зафиксированными
 
 - fixture: `417d14d41e45cc581f5081c40c692d99dc28b1e1e20458cb4501e3cd4c83e261`;
 - набор запросов: `a4a6bf8605d5152ad7d5feb0ab839d334fb5862a8a59aa3914782f70cd6343e5`;
-- manifest конкурентов: `c0271a4fb85f9ed9e8c26f639b70021a0e511bfeb31fd74332e0c2304ac0f185`;
+- manifest конкурентов: `eb84024021d9b822de2831d015e4cae65e9d27a9af3cf441c49e1587ea3f6ab8`;
 - harness: `4449ae0ddc314f2fa3bc6726eb9c90de27972e55d9bbdcf9651af95652c5e3a7`.
 
 Raw results остаются в игнорируемом каталоге `benchmarks/results/`, потому что

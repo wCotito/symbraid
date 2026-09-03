@@ -42,8 +42,8 @@ def main() -> int:
     if len(set(bases.values())) != 1:
         raise SystemExit(f"version mismatch: {versions}")
     mcp = json.loads((ROOT / "plugins" / "symbraid-search" / ".mcp.json").read_text(encoding="utf-8"))
-    if "io.github.symbraid-project/symbraid" not in mcp.get("mcpServers", {}):
-        raise SystemExit("MCP manifest is missing io.github.symbraid-project/symbraid")
+    if "io.github.wcotito/symbraid" not in mcp.get("mcpServers", {}):
+        raise SystemExit("MCP manifest is missing io.github.wcotito/symbraid")
     print(f"version consistency OK: {bases['python']} (plugin={versions['codex']})")
     return 0
 

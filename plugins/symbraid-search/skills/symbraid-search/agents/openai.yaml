@@ -5,7 +5,7 @@ interface:
 dependencies:
   tools:
     - type: "mcp"
-      value: "io.github.symbraid-project/symbraid"
+      value: "io.github.wcotito/symbraid"
       description: "Symbraid semantic index and search tools"
       transport: "stdio"
 policy:

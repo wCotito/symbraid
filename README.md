@@ -1,6 +1,6 @@
 # Symbraid
 
-[English](https://github.com/symbraid-project/symbraid/blob/main/docs/en/README.md) | [Русский](https://github.com/symbraid-project/symbraid/blob/main/docs/ru/README.md)
+[English](https://github.com/wCotito/symbraid/blob/main/docs/en/README.md) | [Русский](https://github.com/wCotito/symbraid/blob/main/docs/ru/README.md)
 
 Symbraid is a local-first semantic index for software repositories. It turns a
 project into a searchable knowledge source for developers, IDEs, and any
@@ -69,8 +69,8 @@ symbraid mcp --project /absolute/path/to/project
 
 For Windows convenience installation, Linux shell installation, Qdrant,
 embedding profiles, and upgrades, see the
-[installation guide](https://github.com/symbraid-project/symbraid/blob/main/docs/en/installation.md)
-and [configuration guide](https://github.com/symbraid-project/symbraid/blob/main/docs/en/configuration.md).
+[installation guide](https://github.com/wCotito/symbraid/blob/main/docs/en/installation.md)
+and [configuration guide](https://github.com/wCotito/symbraid/blob/main/docs/en/configuration.md).
 
 ## Integrations
 
@@ -79,10 +79,10 @@ configurations cover Codex, Claude Code/Desktop, VS Code, Cursor, Windsurf, and
 OpenCode. Stdio is the default. Opt-in Streamable HTTP is restricted to loopback
 and requires bearer-token, Origin, and Host validation.
 
-- [MCP clients and transports](https://github.com/symbraid-project/symbraid/blob/main/docs/en/integrations/mcp.md)
-- [VS Code extension](https://github.com/symbraid-project/symbraid/blob/main/docs/en/integrations/vscode.md)
-- [Codex plugin](https://github.com/symbraid-project/symbraid/blob/main/docs/en/integrations/codex.md)
-- [CLI reference](https://github.com/symbraid-project/symbraid/blob/main/docs/en/cli.md)
+- [MCP clients and transports](https://github.com/wCotito/symbraid/blob/main/docs/en/integrations/mcp.md)
+- [VS Code extension](https://github.com/wCotito/symbraid/blob/main/docs/en/integrations/vscode.md)
+- [Codex plugin](https://github.com/wCotito/symbraid/blob/main/docs/en/integrations/codex.md)
+- [CLI reference](https://github.com/wCotito/symbraid/blob/main/docs/en/cli.md)
 
 ## Strengths and tradeoffs
 
@@ -122,18 +122,18 @@ Symbraid ranked semantic results better on this small fixture; ripgrep remained
 far faster. This is a partial comparison, not a universal claim or a full
 competitor ranking. Cold indexing and resource metrics were not collected, and
 version-pinned Codanna, open-codebase-index, and Zilliz Claude Context runs are
-still pending. The [benchmark report](https://github.com/symbraid-project/symbraid/blob/main/docs/en/benchmarks.md) records the complete metric
+still pending. The [benchmark report](https://github.com/wCotito/symbraid/blob/main/docs/en/benchmarks.md) records the complete metric
 table, hardware, limitations, provenance hashes, and reproduction commands.
 ## Documentation
 
-- [Architecture](https://github.com/symbraid-project/symbraid/blob/main/docs/en/architecture.md)
-- [Installation](https://github.com/symbraid-project/symbraid/blob/main/docs/en/installation.md)
-- [Configuration and secrets](https://github.com/symbraid-project/symbraid/blob/main/docs/en/configuration.md)
-- [Embedding profiles](https://github.com/symbraid-project/symbraid/blob/main/docs/en/embeddings.md)
-- [Operations and troubleshooting](https://github.com/symbraid-project/symbraid/blob/main/docs/en/operations/troubleshooting.md)
-- [Security](https://github.com/symbraid-project/symbraid/blob/main/docs/en/project/security.md)
-- [Name availability review](https://github.com/symbraid-project/symbraid/blob/main/docs/en/project/naming.md)
-- [Contributing](https://github.com/symbraid-project/symbraid/blob/main/docs/en/project/contributing.md)
-- [Release readiness review](https://github.com/symbraid-project/symbraid/blob/main/docs/en/reviews/release-readiness.md)
+- [Architecture](https://github.com/wCotito/symbraid/blob/main/docs/en/architecture.md)
+- [Installation](https://github.com/wCotito/symbraid/blob/main/docs/en/installation.md)
+- [Configuration and secrets](https://github.com/wCotito/symbraid/blob/main/docs/en/configuration.md)
+- [Embedding profiles](https://github.com/wCotito/symbraid/blob/main/docs/en/embeddings.md)
+- [Operations and troubleshooting](https://github.com/wCotito/symbraid/blob/main/docs/en/operations/troubleshooting.md)
+- [Security](https://github.com/wCotito/symbraid/blob/main/docs/en/project/security.md)
+- [Name availability review](https://github.com/wCotito/symbraid/blob/main/docs/en/project/naming.md)
+- [Contributing](https://github.com/wCotito/symbraid/blob/main/docs/en/project/contributing.md)
+- [Release readiness review](https://github.com/wCotito/symbraid/blob/main/docs/en/reviews/release-readiness.md)
 
-Symbraid is distributed under the [MIT License](https://github.com/symbraid-project/symbraid/blob/main/LICENSE).
+Symbraid is distributed under the [MIT License](https://github.com/wCotito/symbraid/blob/main/LICENSE).

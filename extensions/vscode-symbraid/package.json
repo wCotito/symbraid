@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/symbraid-project/symbraid"
+    "url": "https://github.com/wCotito/symbraid"
   },
   "engines": { "vscode": "^1.90.0" },
   "categories": ["Other"],
@@ -31,7 +31,7 @@
   },
   "scripts": {
     "test": "node test/extension.test.js && node test/ui.test.js",
-    "package": "vsce package --no-dependencies --baseContentUrl https://github.com/symbraid-project/symbraid/blob/main/extensions/vscode-symbraid"
+    "package": "vsce package --no-dependencies --baseContentUrl https://github.com/wCotito/symbraid/blob/main/extensions/vscode-symbraid"
   },
   "devDependencies": { "@vscode/vsce": "^3.6.0" }
 }

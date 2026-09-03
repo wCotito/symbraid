@@ -16,5 +16,5 @@ Documentation:
 - [English Codex integration](../../docs/en/integrations/codex.md)
 - [Russian Codex integration](../../docs/ru/integrations/codex.md)
 
-The MCP server identifier is io.github.symbraid-project/symbraid. Start a new
+The MCP server identifier is io.github.wcotito/symbraid. Start a new
 Codex session after installation so the MCP server and skill are loaded.

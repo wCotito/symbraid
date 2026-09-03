@@ -87,7 +87,7 @@ if [[ "$skip_extension" -eq 0 ]]; then
         "$node_bin" --check managePanel.js
         "$node_bin" --check media/manage.js
         "$npx_bin" vsce package --no-dependencies --allow-missing-repository \
-            --baseContentUrl https://github.com/symbraid-project/symbraid/blob/main/extensions/vscode-symbraid \
+            --baseContentUrl https://github.com/wCotito/symbraid/blob/main/extensions/vscode-symbraid \
             -o "$vsix"
     )
     [[ -f "$vsix" ]] || die "VSIX packaging did not produce $vsix"

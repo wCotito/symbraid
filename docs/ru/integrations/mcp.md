@@ -30,7 +30,7 @@ MCP не индексирует, не обновляет, не удаляет, �
 В разделе MCP-конфигурации Codex (форма TOML):
 
 ```toml
-[mcp_servers."io.github.symbraid-project/symbraid"]
+[mcp_servers."io.github.wcotito/symbraid"]
 command = "symbraid"
 args = ["mcp", "--transport", "stdio"]
 ```
@@ -41,7 +41,7 @@ Claude Desktop использует JSON-объект `mcpServers`. В Claude Co
 можно зарегистрировать через CLI:
 
 ```text
-claude mcp add io.github.symbraid-project/symbraid -- symbraid mcp --transport stdio
+claude mcp add io.github.wcotito/symbraid -- symbraid mcp --transport stdio
 ```
 
 Эквивалентная JSON-форма для Desktop:
@@ -49,7 +49,7 @@ claude mcp add io.github.symbraid-project/symbraid -- symbraid mcp --transport s
 ```json
 {
   "mcpServers": {
-    "io.github.symbraid-project/symbraid": {
+    "io.github.wcotito/symbraid": {
       "command": "symbraid",
       "args": ["mcp", "--transport", "stdio"]
     }
@@ -64,7 +64,7 @@ claude mcp add io.github.symbraid-project/symbraid -- symbraid mcp --transport s
 ```json
 {
   "servers": {
-    "io.github.symbraid-project/symbraid": {
+    "io.github.wcotito/symbraid": {
       "type": "stdio",
       "command": "symbraid",
       "args": ["mcp", "--transport", "stdio"]
@@ -80,7 +80,7 @@ claude mcp add io.github.symbraid-project/symbraid -- symbraid mcp --transport s
 ```json
 {
   "mcpServers": {
-    "io.github.symbraid-project/symbraid": {
+    "io.github.wcotito/symbraid": {
       "command": "symbraid",
       "args": ["mcp", "--transport", "stdio"]
     }
@@ -95,7 +95,7 @@ claude mcp add io.github.symbraid-project/symbraid -- symbraid mcp --transport s
 ```json
 {
   "mcpServers": {
-    "io.github.symbraid-project/symbraid": {
+    "io.github.wcotito/symbraid": {
       "command": "symbraid",
       "args": ["mcp", "--transport", "stdio"]
     }
