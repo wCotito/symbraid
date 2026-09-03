@@ -25,4 +25,16 @@ text before sharing diagnostics.
 For deployment steps see [agent deployment](agent-deployment.md). For client
 boundaries see the [MCP](../integrations/mcp.md), [VS Code](../integrations/vscode.md),
 and [Codex](../integrations/codex.md) guides.
+## Transient local failures
 
+A read-only status request does not fail merely because Windows temporarily
+refuses a watcher-lock probe. The response keeps the watcher owner when it can
+be read and marks the probe as `unavailable`. The VS Code overview also requests
+`symbraid status` when the settings payload has no index status, and displays
+command errors instead of an empty object.
+
+OpenAI-compatible embedding requests retry transient network failures, timeouts,
+invalid transient responses, and HTTP 408, 429, and 5xx gateway/service errors up
+to three attempts. Authentication and other permanent HTTP errors fail
+immediately. If all attempts fail, check endpoint reachability, firewall policy,
+proxy policy, credentials, and provider health.

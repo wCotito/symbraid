@@ -118,11 +118,11 @@
     },
     {
       "path": "docs/en/operations/troubleshooting.md",
-      "source_sha256": "f458c270b2211c7996d3a2d2aa9bc3ae6209372b21d38ff9f3dc8b64b85d53a9",
+      "source_sha256": "e3e0bc045f21edeb55d645df434399c08407dadde4a821024a9fcd5a88b5f2bc",
       "translations": {
         "ru": {
           "path": "docs/ru/operations/troubleshooting.md",
-          "sha256": "5c48a8d9e9e2995b733b961bf71d1e68236fa734d99253bb0c0668129a0882fc",
+          "sha256": "0f88923ff5e72d0fe537a9799c25872604bdb16b7c6b5e1bd14ed26b5bb5d680",
           "status": "current"
         }
       }
@@ -184,11 +184,11 @@
     },
     {
       "path": "docs/en/reviews/release-readiness.md",
-      "source_sha256": "ff267426418ca2a760412c3fd304214679a9c47eda5fae757069116fab67b674",
+      "source_sha256": "05f38a66685d470db76918820b4091391d88cbb9c1fea7dcfbf32b3380ee5aba",
       "translations": {
         "ru": {
           "path": "docs/ru/reviews/release-readiness.md",
-          "sha256": "071ba7e125c659076536cf3b200480904e344be5d92ea01254a3e7db4577d82b",
+          "sha256": "d488ca9a2bec7ef46c1a67aa2550b71e99fb27fbc772ba700a86d1d9d091e48a",
           "status": "current"
         }
       }

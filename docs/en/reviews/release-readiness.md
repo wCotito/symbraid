@@ -60,3 +60,17 @@ as completed.
 
 **Ready.** There are no open P0, P1, or P2 findings. Publication remains gated
 by the registered P3 release workflow checks above.
+## Post-review correction cycle
+
+A separate reviewer examined the Windows status/search and Manage UI fixes.
+The initial verdict reported two P2 findings: a top-level settings failure could
+leave the webview without a renderable state, and the regression checks did not
+execute all failure-policy branches. The UI state loader was extracted into a
+pure module, all settings/status outcomes gained behavioral tests, and core tests
+were added for Windows path aliases, permanent HTTP failures, retry exhaustion,
+and secret redaction.
+
+The same reviewer re-checked the corrected diff. The final verdict is **ready**,
+with no open P0, P1, P2, or P3 findings. The corrected suite has 36 passing Python
+tests with one platform-specific skip on the Windows host, plus passing VS Code,
+documentation parity/hash/link, version, and diff checks.
