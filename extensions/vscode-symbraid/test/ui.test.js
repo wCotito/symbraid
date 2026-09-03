@@ -14,6 +14,8 @@ assert.ok(!host.includes('onclick='));
 assert.ok(client.includes("ru:"));
 assert.ok(client.includes("en:"));
 assert.ok(client.includes("clear_overrides"));
+assert.ok(client.includes("JSON.stringify(project.index_status || {}, null, 2)"));
+assert.ok(!client.includes('project.service_status'));
 assert.ok(css.includes('var(--vscode-editor-background)'));
 for (const source of [host, client, extension]) {
   assert.ok(!source.toLowerCase().includes(['ki', 'lo'].join('')));

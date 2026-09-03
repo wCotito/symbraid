@@ -147,7 +147,7 @@ function render() {
     dd.textContent = value;
     summary.append(dt, dd);
   });
-  document.getElementById('statusResult').textContent = JSON.stringify(project.service_status || project.status || {}, null, 2);
+  document.getElementById('statusResult').textContent = JSON.stringify(project.index_status || {}, null, 2);
   const profiles = state.profiles || {};
   const list = document.getElementById('profileList');
   list.replaceChildren();
