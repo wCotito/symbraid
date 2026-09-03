@@ -1,0 +1,29 @@
+# Python
+*.egg-info/
+build/
+dist/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Node / VS Code
+node_modules/
+*.vsix
+
+# Local runtime and indexes
+.runtime/
+.models/
+*.lance/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.key
