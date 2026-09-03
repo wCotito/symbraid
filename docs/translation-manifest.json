@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "canonical_locale": "en",
+  "locales": [
+    "en",
+    "ru"
+  ],
+  "files": [
+    {
+      "path": "docs/en/README.md",
+      "source_sha256": "766a238a45a00416d4b1d05a70df5cb2ee01dc9b35d9d8e6249b0619f51901be",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/README.md",
+          "sha256": "707413c057961cdb21d8af72b65ed8297edace6777dabd455e7ab1eb059fa4ec",
+          "status": "current"
+        }
+      }
+    },
+    {
+      "path": "docs/en/architecture.md",
+      "source_sha256": "5ec861296c64d208918c5a2e6c166085af9046f39192e31c8c62c57c4d182061",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/architecture.md",
+          "sha256": "7af97d7a84d6227d33b3b649d03fe857b93bee2fc919b7602592667c6470c025",
+          "status": "current"
+        }
+      }
+    },
+    {
+      "path": "docs/en/cli.md",
+      "source_sha256": "762e00730a9f239ada200314fa6c763f35e500fcc3e7bdc77644cf383e0fee26",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/cli.md",
+          "sha256": "dedaa529c57290f4722b2230c63406bb8f931bb595a63146b598841cff2eac82",
+          "status": "current"
+        }
+      }
+    },
+    {
+      "path": "docs/en/configuration.md",
+      "source_sha256": "7a8381561182740672d5d1014b4ab657ae9c31a3af4f4b676ed596a7a8e453e8",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/configuration.md",
+          "sha256": "a41878c575a9bd8a390c5f98650b57cec500c96c64510fd64c30c5a74d40ff99",
+          "status": "current"
+        }
+      }
+    },
+    {
+      "path": "docs/en/embeddings.md",
+      "source_sha256": "10c4f1a69e3e51dd546dd04180a46e548ad4e795ae440b6f7995536df9b7d30c",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/embeddings.md",
+          "sha256": "12535adb957afd2f16982e8b22ab768088527eb133c830842f4f489573efce69",
+          "status": "current"
+        }
+      }
+    },
+    {
+      "path": "docs/en/installation.md",
+      "source_sha256": "f11ff753c2ae91bc7117d705aaecd9c7a24e12678e7cdcf7e6defa31e058ca5c",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/installation.md",
+          "sha256": "8c87575021396a5c11358bdabebd6530437afeec91e7ed2090188d4bb9c2b25a",
+          "status": "current"
+        }
+      }
+    },
+    {
+      "path": "docs/en/integrations/codex.md",
+      "source_sha256": "18aab563018922282786344697c4c594a03bbbc9e98cf15880576f111a2711e5",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/integrations/codex.md",
+          "sha256": "fdc0fd19da62e721d589ae00429b6ade6a356f9d6baf368f5965bd730a570b1e",
+          "status": "current"
+        }
+      }
+    },
+    {
+      "path": "docs/en/integrations/mcp.md",
+      "source_sha256": "1f407e62a85441bb8936b175e4e2cd54b9749c28f2a35aa2047b147f1d0b9e87",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/integrations/mcp.md",
+          "sha256": "8beffbd4940da1380e7af9742563b38a4a8f1cd9f7d7baf65dbd3d8b74c49d88",
+          "status": "current"
+        }
+      }
+    },
+    {
+      "path": "docs/en/integrations/vscode.md",
+      "source_sha256": "5db112ec838b4cf1e2ed1db83d7d134e6916ae82185ea7f1b6ed1d68ce6e84e3",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/integrations/vscode.md",
+          "sha256": "19400119f908b55459bbc3fbda41e2806bd28038a339376f906e6765460e6eac",
+          "status": "current"
+        }
+      }
+    },
+    {
+      "path": "docs/en/operations/agent-deployment.md",
+      "source_sha256": "e7fc0dc78f207cb09cc1e2ae9797aa519f3cbd4dc29e5cc619f3cfb10eb4a9cb",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/operations/agent-deployment.md",
+          "sha256": "d8648717573c8015a279fee3794295de4346376c86fe72fa5a1ffd79827cc379",
+          "status": "current"
+        }
+      }
+    },
+    {
+      "path": "docs/en/operations/troubleshooting.md",
+      "source_sha256": "f458c270b2211c7996d3a2d2aa9bc3ae6209372b21d38ff9f3dc8b64b85d53a9",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/operations/troubleshooting.md",
+          "sha256": "5c48a8d9e9e2995b733b961bf71d1e68236fa734d99253bb0c0668129a0882fc",
+          "status": "current"
+        }
+      }
+    },
+    {
+      "path": "docs/en/project/agents.md",
+      "source_sha256": "e4747b90f8b5bb106ae9e03a4769bd81acadd3d028c62b79239276a744508267",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/project/agents.md",
+          "sha256": "587de59550cf5989802f78f7c6a10d8522f6898cc46d26d7ff99cac2854b1288",
+          "status": "current"
+        }
+      }
+    },
+    {
+      "path": "docs/en/project/contributing.md",
+      "source_sha256": "b786cf6b0b2f7f5962f43ab0ec977f005a1dcbdfec630515b5630cd17fa5c88b",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/project/contributing.md",
+          "sha256": "f24f46e9f53950c1b5baacedcdf1a909c3811b6f84ae9e27cfc02c5ba03e74f3",
+          "status": "current"
+        }
+      }
+    },
+    {
+      "path": "docs/en/project/license.md",
+      "source_sha256": "9ebcfdbee960ea5e65f0c09d2160345c61b2966f833abeaf548a333ce015535a",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/project/license.md",
+          "sha256": "d59a3cabbadaeaa2083aebd23503e0912e85d964e07b7f7bf39172d401168082",
+          "status": "current"
+        }
+      }
+    },
+    {
+      "path": "docs/en/project/naming.md",
+      "source_sha256": "e24ee5b742806ab3e9636ba632f782ef98ef396ec3b715e624ba3d15004b2753",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/project/naming.md",
+          "sha256": "78281f0fae45b7854f39939283d40ee85b9d0ca70efe79c7266acfef9fee9ca1",
+          "status": "current"
+        }
+      }
+    },
+    {
+      "path": "docs/en/project/security.md",
+      "source_sha256": "8d6428d79ce8ea092cf9ca79ef580b7f9a661c8fc4e1def79205833676d18374",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/project/security.md",
+          "sha256": "09381d982991243480b9eb6e8e4ad0311e744682089b163954afa2a101a17461",
+          "status": "current"
+        }
+      }
+    },
+    {
+      "path": "docs/en/reviews/release-readiness.md",
+      "source_sha256": "ff267426418ca2a760412c3fd304214679a9c47eda5fae757069116fab67b674",
+      "translations": {
+        "ru": {
+          "path": "docs/ru/reviews/release-readiness.md",
+          "sha256": "071ba7e125c659076536cf3b200480904e344be5d92ea01254a3e7db4577d82b",
+          "status": "current"
+        }
+      }
+    }
+  ]
+}

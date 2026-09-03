@@ -1,0 +1,130 @@
+name: Build release artifacts
+
+# This workflow is intentionally build-only. It never publishes packages,
+# creates a release, or uploads to a package registry.
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  mcp-registry:
+    name: MCP Registry manifest validation (no publish)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download pinned mcp-publisher
+        env:
+          MCP_PUBLISHER_VERSION: v1.7.9
+          MCP_PUBLISHER_SHA256: ab128162b0616090b47cf245afe0a23f3ef08936fdce19074f5ba0a4469281ac
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/mcp-publisher_linux_amd64.tar.gz"
+          curl --fail --location --retry 3 --silent --show-error \
+            --output "$archive" \
+            "https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          printf '%s  %s\n' "$MCP_PUBLISHER_SHA256" "$archive" | sha256sum --check --status
+          tar -xzf "$archive" -C "$RUNNER_TEMP" mcp-publisher
+          chmod 0755 "$RUNNER_TEMP/mcp-publisher"
+          "$RUNNER_TEMP/mcp-publisher" --version
+      - name: Validate server.json (no login or publish)
+        run: "$RUNNER_TEMP/mcp-publisher validate server.json"
+
+  python:
+    name: Build Python wheel and sdist (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate documentation and versions
+        run: |
+          python scripts/sync_docs.py --check
+          python scripts/check_versions.py
+      - name: Build wheel and sdist
+        run: |
+          python -m pip install --upgrade build
+          python -m build components/symbraid --outdir dist/python
+      - uses: actions/upload-artifact@v4
+        with:
+          name: symbraid-python-${{ matrix.os }}
+          path: dist/python/
+          if-no-files-found: error
+
+  vscode:
+    name: Build VSIX (no publish)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: extensions/vscode-symbraid/package-lock.json
+      - name: Build VSIX without publishing
+        run: |
+          npm ci --prefix extensions/vscode-symbraid
+          npm test --prefix extensions/vscode-symbraid
+          npm run package --prefix extensions/vscode-symbraid
+      - uses: actions/upload-artifact@v4
+        with:
+          name: symbraid-vscode
+          path: extensions/vscode-symbraid/*.vsix
+          if-no-files-found: error
+
+  assemble:
+    name: Assemble checksummed, scanned release bundle
+    needs:
+      - python
+      - vscode
+      - mcp-registry
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/download-artifact@v4
+        with:
+          name: symbraid-python-ubuntu-latest
+          path: dist/python/ubuntu
+      - uses: actions/download-artifact@v4
+        with:
+          name: symbraid-python-windows-latest
+          path: dist/python/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: symbraid-vscode
+          path: dist
+      - name: Create source archive
+        run: git archive --format=tar.gz --prefix=symbraid-${GITHUB_SHA}/ --output=dist/symbraid-source.tar.gz HEAD
+      - name: Scan source archive for secrets, caches, indexes, and local paths
+        run: |
+          mapfile -t archives < <(find dist -type f \( -name '*.tar.gz' -o -name '*.whl' -o -name '*.vsix' \) -print)
+          test "${#archives[@]}" -gt 0
+          python scripts/scan_release_archive.py "${archives[@]}"
+      - name: Generate SBOM, provenance, and SHA-256 checksums
+        run: |
+          python scripts/release_metadata.py --dist dist
+          test -s dist/SHA256SUMS
+          test -s dist/symbraid.sbom.spdx.json
+          test -s dist/symbraid.provenance.json
+      - name: Upload build-only release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: symbraid-release-bundle
+          path: dist/
+          if-no-files-found: error
