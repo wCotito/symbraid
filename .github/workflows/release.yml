@@ -59,7 +59,7 @@ jobs:
         run: |
           python -m pip install --upgrade build
           python -m build components/symbraid --outdir dist/python
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: symbraid-python-${{ matrix.os }}
           path: dist/python/
@@ -80,7 +80,7 @@ jobs:
           npm ci --prefix extensions/vscode-symbraid
           npm test --prefix extensions/vscode-symbraid
           npm run package --prefix extensions/vscode-symbraid
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: symbraid-vscode
           path: extensions/vscode-symbraid/*.vsix
@@ -124,7 +124,7 @@ jobs:
           test -s dist/symbraid.sbom.spdx.json
           test -s dist/symbraid.provenance.json
       - name: Upload build-only release bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: symbraid-release-bundle
           path: dist/
