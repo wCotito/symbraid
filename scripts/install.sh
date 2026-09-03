@@ -9,11 +9,9 @@ Install the Symbraid CLI with uv (preferred) or pipx, and optionally install
 the VS Code extension and Codex plugin.
 
 Options:
-  --skip-extension             Do not build or install the VS Code extension.
-  --skip-codex-plugin          Do not install the Codex plugin.
-  --replace-legacy-extension   Allow replacing the legacy Code Index extension.
-  --non-interactive            Fail instead of prompting for legacy replacement.
-  -h, --help                   Show this help.
+  --skip-extension     Do not build or install the VS Code extension.
+  --skip-codex-plugin  Do not install the Codex plugin.
+  -h, --help           Show this help.
 EOF
 }
 
@@ -28,14 +26,10 @@ fi
 
 skip_extension=0
 skip_codex_plugin=0
-replace_legacy=0
-non_interactive=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --skip-extension) skip_extension=1 ;;
         --skip-codex-plugin) skip_codex_plugin=1 ;;
-        --replace-legacy-extension) replace_legacy=1 ;;
-        --non-interactive) non_interactive=1 ;;
         -h|--help) usage; exit 0 ;;
         *) die "unknown option: $1" ;;
     esac
@@ -92,36 +86,15 @@ if [[ "$skip_extension" -eq 0 ]]; then
         "$node_bin" --check executable.js
         "$node_bin" --check managePanel.js
         "$node_bin" --check media/manage.js
-        # Complete VSIX validation must precede any legacy extension change.
         "$npx_bin" vsce package --no-dependencies --allow-missing-repository \
             --baseContentUrl https://github.com/symbraid-project/symbraid/blob/main/extensions/vscode-symbraid \
             -o "$vsix"
     )
     [[ -f "$vsix" ]] || die "VSIX packaging did not produce $vsix"
-    installed_extensions="$("$code_bin" --list-extensions --show-versions)"
-    legacy_id="$(
-        printf '%s\n' "$installed_extensions" |
-        awk 'tolower($0) ~ /^[[:space:]]*[^[:space:]@]+[.]code-index(@|[[:space:]]|$)/ { sub(/^[[:space:]]*/, ""); sub(/@.*/, ""); print; exit }'
-    )"
-    if [[ -n "$legacy_id" && "$replace_legacy" -eq 0 ]]; then
-        ci_value="$(printenv CI || true)"
-        ci=0
-        [[ "$ci_value" =~ ^(true|1|yes)$ ]] && ci=1
-        if [[ "$non_interactive" -eq 1 || "$ci" -eq 1 || ! -t 0 || ! -t 1 ]]; then
-            die 'A legacy Code Index extension is installed. Re-run with --replace-legacy-extension to replace it.'
-        fi
-        printf 'Type ReplaceLegacyExtension to replace the legacy Code Index extension: '
-        read -r confirmation
-        [[ "$confirmation" == ReplaceLegacyExtension ]] ||
-            die 'Legacy extension replacement was not confirmed.'
-    fi
     "$code_bin" --install-extension "$vsix" --force
     installed_after="$("$code_bin" --list-extensions --show-versions)"
     printf '%s\n' "$installed_after" | grep -Eiq '(^|[[:space:]])symbraid[.]symbraid(@|$)' ||
-        die 'The new Symbraid VS Code extension was not verified after installation.'
-    if [[ -n "$legacy_id" ]]; then
-        "$code_bin" --uninstall-extension "$legacy_id"
-    fi
+        die 'The Symbraid VS Code extension was not verified after installation.'
     trap - EXIT
     cleanup_vsix
 fi
@@ -133,8 +106,8 @@ if [[ "$skip_codex_plugin" -eq 0 ]]; then
     if ! printf '%s\n' "$marketplaces" | grep -Fqi "$repo_root"; then
         "$codex_bin" plugin marketplace add "$repo_root"
     fi
-    "$codex_bin" plugin add symbraid-search@semantic-code-index-kit
+    "$codex_bin" plugin add symbraid-search@symbraid
 fi
 
 printf '%s\n' 'Symbraid installation completed.'
-printf '%s\n' 'Start a new Codex session and reload the VS Code window to pick up the new integrations.'
+printf '%s\n' 'Start a new Codex session and reload the VS Code window to pick up the integrations.'

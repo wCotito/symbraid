@@ -56,7 +56,7 @@ if (Test-CommandAvailable 'codex') {
     if ($LASTEXITCODE -ne 0) {
         throw "codex plugin list failed with exit code $LASTEXITCODE."
     }
-    foreach ($plugin in @('symbraid-search@semantic-code-index-kit', 'hybrid-code-search@semantic-code-index-kit')) {
+    foreach ($plugin in @('symbraid-search@symbraid')) {
         if ($plugins -match [regex]::Escape($plugin)) {
             Invoke-Checked 'codex' @('plugin', 'remove', $plugin)
         }
@@ -66,8 +66,8 @@ if (Test-CommandAvailable 'codex') {
         if ($LASTEXITCODE -ne 0) {
             throw "codex plugin marketplace list failed with exit code $LASTEXITCODE."
         }
-        if ($marketplaces -match '(?im)semantic-code-index-kit') {
-            Invoke-Checked 'codex' @('plugin', 'marketplace', 'remove', 'semantic-code-index-kit')
+        if ($marketplaces -match '(?im)^\s*symbraid(?:\s|$)') {
+            Invoke-Checked 'codex' @('plugin', 'marketplace', 'remove', 'symbraid')
         }
     }
 }

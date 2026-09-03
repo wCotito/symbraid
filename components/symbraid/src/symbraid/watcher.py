@@ -9,7 +9,7 @@ from .indexer import git_context
 from .locking import WatcherLease
 from .paths import app_paths
 from .registry import Registry, project_id
-from .service import CodeIndexService
+from .service import SymbraidService
 
 
 Reporter = Callable[[dict[str, Any]], None]
@@ -66,7 +66,7 @@ def watch_project(
                 signal.signal(signum, request_stop)
     try:
         with lease:
-            service = CodeIndexService(registry)
+            service = SymbraidService(registry)
             report({"event": "watcher_started", "project": str(root), "owner": lease.owner})
             if stop.is_set():
                 return

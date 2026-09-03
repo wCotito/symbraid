@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "io.github.symbraid-project/symbraid": {
-      "command": "symbraid",
-      "args": ["mcp", "--transport", "stdio"]
-    }
-  }
-}

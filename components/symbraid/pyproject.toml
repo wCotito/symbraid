@@ -26,8 +26,6 @@ dev = ["build>=1.2,<2", "jsonschema>=4.23,<5"]
 [project.scripts]
 symbraid = "symbraid.cli:main"
 symbraid-mcp = "symbraid.mcp_server:main"
-code-index = "symbraid.cli:legacy_main"
-code-index-mcp = "symbraid.mcp_server:legacy_main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

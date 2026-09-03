@@ -24,7 +24,7 @@
         "symbraid.executablePath": {
           "type": "string",
           "default": "",
-          "description": "Path to the Symbraid executable. Leave empty to use PATH, then the legacy Code Index launcher."
+          "description": "Path to the Symbraid executable. Leave empty to resolve symbraid from PATH."
         }
       }
     }

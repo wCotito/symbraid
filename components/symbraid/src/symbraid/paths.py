@@ -42,11 +42,3 @@ def app_paths() -> AppPaths:
         _xdg("XDG_CACHE_HOME", home / ".cache") / "symbraid",
         _xdg("XDG_STATE_HOME", home / ".local" / "state") / "symbraid",
     )
-
-
-def legacy_app_root() -> Path | None:
-    """Return the legacy Windows root, which is read-only during import."""
-    if os.name != "nt":
-        return None
-    local = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
-    return local / "CodeIndex"

@@ -11,10 +11,6 @@ use the portable symbraid executable supplied by PATH, pipx, uv tool, or an
 explicit user configuration. Do not assume a particular operating system,
 shell launcher, user profile path, or storage backend.
 
-The historical hybrid-code-search name is a documented, deprecated compatibility
-alias only and is scheduled for removal before the 2.0 release. New prompts and
-installations should use symbraid-search.
-
 ## Route the request
 
 - Exact identifier, filename, error text, or literal known: start with rg; semantic search is optional.

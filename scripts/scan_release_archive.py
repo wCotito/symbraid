@@ -65,11 +65,6 @@ TOKEN_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ),
 )
 
-# Keep the old public constant for callers that imported the scanner directly.
-SECRET = re.compile(
-    "|".join(f"(?:{pattern.pattern})" for _, pattern in TOKEN_PATTERNS),
-    re.IGNORECASE,
-)
 
 CREDENTIAL_ASSIGNMENT = re.compile(
     r"(?ix)(?<![A-Za-z0-9_.-])"

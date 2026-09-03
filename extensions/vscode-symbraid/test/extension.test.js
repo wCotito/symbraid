@@ -5,7 +5,7 @@ const path = require('path');
 const childProcess = require('child_process');
 const { EventEmitter } = require('events');
 const manifest = require('../package.json');
-const { legacyExecutablePath, resolveExecutablePath } = require('../executable');
+const { resolveExecutablePath } = require('../executable');
 const { Controller, spawnSymbraid, terminateChild } = require('../extension');
 
 assert.strictEqual(manifest.name, 'symbraid');
@@ -26,19 +26,18 @@ const pathEnv = {
 };
 assert.strictEqual(resolveExecutablePath('', { env: pathEnv }), pathExecutable);
 
-const legacy = legacyExecutablePath({ LOCALAPPDATA: temp }, process.platform);
-assert.strictEqual(resolveExecutablePath('', { env: { LOCALAPPDATA: temp, PATH: '' } }), legacy);
+assert.strictEqual(resolveExecutablePath('', { env: { PATH: '' } }), 'symbraid');
 
 let spawnCalled = false;
 const originalSpawn = childProcess.spawn;
 childProcess.spawn = () => {
   spawnCalled = true;
-  throw new Error('spawn should not be reached for an unsafe legacy launcher argument');
+  throw new Error('spawn should not be reached for an unsafe script launcher argument');
 };
 try {
   assert.throws(
     () => spawnSymbraid(
-      'legacy.code-index.cmd',
+      'symbraid.cmd',
       ['watch', path.join(temp, 'workspace & payload')],
       temp,
       'win32',
@@ -47,7 +46,7 @@ try {
   );
   assert.throws(
     () => spawnSymbraid(
-      path.join(temp, 'legacy&evil.cmd'),
+      path.join(temp, 'symbraid&evil.cmd'),
       ['watch', temp],
       temp,
       'win32',
@@ -58,7 +57,7 @@ try {
 } finally {
   childProcess.spawn = originalSpawn;
 }
-assert.strictEqual(spawnCalled, false, 'unsafe legacy launcher inputs must not reach a shell-backed spawn');
+assert.strictEqual(spawnCalled, false, 'unsafe script launcher inputs must not reach a shell-backed spawn');
 
 const root = path.resolve(__dirname, '..');
 const host = fs.readFileSync(path.join(root, 'extension.js'), 'utf8');
@@ -73,7 +72,7 @@ assert.ok(!host.includes("['index'"));
 assert.ok(!host.includes("['refresh'"));
 assert.ok(host.includes("['watch', folder.uri.fsPath]"));
 assert.ok(host.includes("['project', 'autowatch'"));
-assert.ok(!fs.existsSync(path.join(root, 'core.js')), 'legacy local watcher/index core should be removed');
+assert.ok(!fs.existsSync(path.join(root, 'core.js')), 'the extension must not contain watcher/index core');
 
 function delayedChild(exitDelayMs) {
   const child = new EventEmitter();

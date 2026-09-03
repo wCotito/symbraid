@@ -14,7 +14,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 
 from .registry import normalize_project_path
 from .secrets import env_reference, get_secret
-from .service import CodeIndexService
+from .service import SymbraidService
 
 
 INSTRUCTIONS = (
@@ -69,17 +69,17 @@ def build_server(
     ) -> dict:
         """Search the active semantic index source for a registered project."""
         project = _resolve_project(bound_project, project_path)
-        return CodeIndexService().search(query, project, top_k, path_filter)
+        return SymbraidService().search(query, project, top_k, path_filter)
 
     @server.tool()
     def index_status(project_path: Optional[str] = None) -> dict:
         """Return the active managed source, backend, completeness, and index metadata."""
-        return CodeIndexService().status(_resolve_project(bound_project, project_path))
+        return SymbraidService().status(_resolve_project(bound_project, project_path))
 
     @server.tool()
     def list_index_sources(project_path: Optional[str] = None) -> dict:
         """List configured sources and the active source without modifying them."""
-        return CodeIndexService().list_sources(_resolve_project(bound_project, project_path))
+        return SymbraidService().list_sources(_resolve_project(bound_project, project_path))
 
     return server
 
@@ -175,11 +175,6 @@ def main() -> int:
     except Exception as exc:
         print(json.dumps({"status": "error", "error": str(exc)}), file=sys.stderr)
         return 1
-
-
-def legacy_main() -> int:
-    print("warning: code-index-mcp is deprecated; use symbraid-mcp (alias removed in 2.0)", file=sys.stderr)
-    return main()
 
 
 mcp = build_server()

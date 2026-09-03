@@ -61,15 +61,15 @@ fi
 codex_bin="$(command -v codex || true)"
 if [[ -n "$codex_bin" ]]; then
     plugins="$("$codex_bin" plugin list)"
-    for plugin in symbraid-search@semantic-code-index-kit hybrid-code-search@semantic-code-index-kit; do
+    for plugin in symbraid-search@symbraid; do
         if printf '%s\n' "$plugins" | grep -Fqi "$plugin"; then
             "$codex_bin" plugin remove "$plugin"
         fi
     done
     if [[ "$remove_marketplace" -eq 1 ]]; then
         marketplaces="$("$codex_bin" plugin marketplace list)"
-        if printf '%s\n' "$marketplaces" | grep -Fqi semantic-code-index-kit; then
-            "$codex_bin" plugin marketplace remove semantic-code-index-kit
+        if printf '%s\n' "$marketplaces" | grep -Eiq '^[[:space:]]*symbraid([[:space:]]|$)'; then
+            "$codex_bin" plugin marketplace remove symbraid
         fi
     fi
 fi

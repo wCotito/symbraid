@@ -161,10 +161,10 @@ class QdrantStore:
             )
             return response["result"].get("points", [])
         except QdrantError:
-            legacy = dict(body)
-            legacy["vector"] = legacy.pop("query")
+            fallback = dict(body)
+            fallback["vector"] = fallback.pop("query")
             response = self._request(
-                "POST", f"/collections/{self.collection}/points/search", legacy
+                "POST", f"/collections/{self.collection}/points/search", fallback
             )
             return response.get("result", [])
 

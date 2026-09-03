@@ -101,7 +101,6 @@ if (-not $SkipExtension) {
 }
 
 Invoke-PluginValidator (Join-Path $repoRoot 'plugins\symbraid-search')
-Invoke-PluginValidator (Join-Path $repoRoot 'plugins\hybrid-code-search')
 
 $skillValidator = Join-Path $env:USERPROFILE '.codex\skills\.system\skill-creator\scripts\quick_validate.py'
 if (-not (Test-Path -LiteralPath $skillValidator)) {
@@ -114,10 +113,8 @@ if (Test-CommandAvailable 'python') {
 }
 if ($yamlAvailable) {
     Invoke-Checked 'python' @($skillValidator, (Join-Path $repoRoot 'plugins\symbraid-search\skills\symbraid-search'))
-    Invoke-Checked 'python' @($skillValidator, (Join-Path $repoRoot 'plugins\hybrid-code-search\skills\hybrid-code-search'))
 } elseif (Test-CommandAvailable 'uv') {
     Invoke-Checked 'uv' @('run', '--with', 'PyYAML', '--python', '3.10', 'python', $skillValidator, (Join-Path $repoRoot 'plugins\symbraid-search\skills\symbraid-search'))
-    Invoke-Checked 'uv' @('run', '--with', 'PyYAML', '--python', '3.10', 'python', $skillValidator, (Join-Path $repoRoot 'plugins\hybrid-code-search\skills\hybrid-code-search'))
 } else {
     throw 'PyYAML is unavailable. Install it in the verification environment or install uv.'
 }

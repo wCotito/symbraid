@@ -13,7 +13,7 @@ from unittest import mock
 
 from symbraid.cli import prepare_project_payload, profile_set, run
 from symbraid.registry import Registry, default_registry, normalize_project_path
-from symbraid.service import CodeIndexService
+from symbraid.service import SymbraidService
 from symbraid.secrets import SERVICE, SecretUpdate
 
 
@@ -47,25 +47,22 @@ def fake_keyring(initial=None):
     return module
 
 
-class RegistryMigrationTests(unittest.TestCase):
-    def test_v2_rejects_normalized_path_collision_even_with_matching_project_id(self):
+class RegistryTests(unittest.TestCase):
+    def test_new_qdrant_source_uses_symbraid_collection_name(self):
         with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_root = root / "repo"; project_root.mkdir()
+            config_path = root / "config.json"
             data = default_registry()
-            data["schema_version"] = 2
-            shared_id = "0123456789abcdef"
-            data["projects"] = {
-                "first": {"path": "C:/Work/Repo", "project_id": shared_id, "sources": {}, "overrides": {}},
-                "second": {"path": "c:/work/repo", "project_id": shared_id, "sources": {}, "overrides": {}},
-            }
-            config_path = Path(directory) / "config.json"
-            original = json.dumps(data)
-            config_path.write_text(original, encoding="utf-8")
-            registry = Registry(config_path)
-            with mock.patch("symbraid.registry.normalize_project_path", return_value="c:/work/repo"):
-                with self.assertRaisesRegex(ValueError, "Project path collision"):
-                    registry.load()
-            self.assertEqual(config_path.read_text(encoding="utf-8"), original)
-            self.assertTrue(config_path.with_name("config.json.v2.bak").is_file())
+            data["defaults"]["backend"] = "qdrant"
+            config_path.write_text(json.dumps(data), encoding="utf-8")
+
+            project = Registry(config_path).register_project(str(project_root))
+            source = project["sources"][project["active_source_id"]]
+
+            self.assertTrue(source["location"]["collection"].startswith("symbraid-"))
+
+
 
     @unittest.skipUnless(os.name == "nt", "Windows case-fold contract")
     def test_windows_normalization_casefolds_project_paths(self):
@@ -74,66 +71,7 @@ class RegistryMigrationTests(unittest.TestCase):
             normalize_project_path("c:/work/repo"),
         )
 
-    def test_v1_removes_external_sources_and_preserves_physical_locations_in_backup(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            project_root = root / "repo"; project_root.mkdir()
-            config_path = root / "config.json"
-            external_directory = root / "external-index"
-            legacy = default_registry(); legacy["schema_version"] = 1
-            legacy["defaults"]["kilo_lancedb_roots"] = [str(root / "discovery")]
-            key = normalize_project_path(str(project_root))
-            legacy["projects"][key] = {
-                "path": str(project_root), "project_id": "0123456789abcdef", "auto_watch": True,
-                "active_source_id": "external-lance", "overrides": {},
-                "sources": {
-                    "managed-lancedb": {
-                        "id": "managed-lancedb", "owner": "code-index", "mode": "read-write",
-                        "backend": "lancedb", "embedding_profile": "default-code",
-                        "location": {"directory": str(root / "managed")},
-                    },
-                    "external-lance": {
-                        "id": "external-lance", "owner": "kilo", "mode": "read-only",
-                        "backend": "lancedb", "embedding_profile": "default-code",
-                        "location": {"directory": str(external_directory)},
-                    },
-                },
-            }
-            config_path.write_text(json.dumps(legacy), encoding="utf-8")
-            registry = Registry(config_path)
-            migrated = registry.load()
-            project = migrated["projects"][key]
-            self.assertEqual(migrated["schema_version"], 3)
-            self.assertNotIn("kilo_lancedb_roots", migrated["defaults"])
-            self.assertEqual(project["active_source_id"], "managed-lancedb")
-            self.assertFalse(project["auto_watch"])
-            self.assertNotIn("external-lance", project["sources"])
-            self.assertNotIn("owner", project["sources"]["managed-lancedb"])
-            backup = config_path.with_name("config.json.v1.bak")
-            self.assertTrue(backup.exists())
-            backup_data = json.loads(backup.read_text(encoding="utf-8"))
-            self.assertEqual(
-                backup_data["projects"][key]["sources"]["external-lance"]["location"]["directory"],
-                str(external_directory),
-            )
-            self.assertFalse(external_directory.exists())
 
-    def test_v1_creates_managed_source_when_only_external_source_existed(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory); project_root = root / "repo"; project_root.mkdir()
-            config_path = root / "config.json"
-            legacy = default_registry(); legacy["schema_version"] = 1
-            key = normalize_project_path(str(project_root))
-            legacy["projects"][key] = {
-                "path": str(project_root), "project_id": "fedcba9876543210", "auto_watch": True,
-                "active_source_id": "external", "overrides": {},
-                "sources": {"external": {"id": "external", "owner": "kilo", "mode": "read-only", "backend": "qdrant", "location": {"url": "http://example", "collection": "external"}}},
-            }
-            config_path.write_text(json.dumps(legacy), encoding="utf-8")
-            project = Registry(config_path).load()["projects"][key]
-            self.assertEqual(project["active_source_id"], "managed-lancedb")
-            self.assertEqual(project["sources"]["managed-lancedb"]["backend"], "lancedb")
-            self.assertFalse(project["auto_watch"])
 
 
 class SettingsTests(unittest.TestCase):
@@ -143,7 +81,7 @@ class SettingsTests(unittest.TestCase):
         self.project_root = self.root / "repo"; self.project_root.mkdir()
         self.registry = Registry(self.root / "config.json")
         self.registry.register_project(str(self.project_root))
-        self.service = CodeIndexService(self.registry)
+        self.service = SymbraidService(self.registry)
 
     def tearDown(self):
         self.temp.cleanup()
@@ -309,7 +247,7 @@ class SettingsTests(unittest.TestCase):
         indexer = mock.Mock()
         indexer.index_project.return_value = {"chunks_total": 7}
         indexer.index_status.return_value = {"indexed": True, "metadata": {"indexing_complete": True}}
-        with mock.patch.object(self.service, "_store", return_value=fake_store), mock.patch("symbraid.service.CodeIndexer", return_value=indexer):
+        with mock.patch.object(self.service, "_store", return_value=fake_store), mock.patch("symbraid.service.SymbraidIndexer", return_value=indexer):
             result = self.service.apply_project_settings(str(self.project_root), {**payload, "plan_hash": plan["plan_hash"]})
         project = self.registry.project(str(self.project_root))
         self.assertEqual(result["impact"], "reindex")
@@ -334,7 +272,7 @@ class SettingsTests(unittest.TestCase):
         indexer = mock.Mock(); indexer.index_project.side_effect = RuntimeError("fixture failure")
         with mock.patch.dict(sys.modules, {"keyring": keyring}), mock.patch.object(
             self.service, "_store", return_value=fake_store
-        ), mock.patch("symbraid.service.CodeIndexer", return_value=indexer):
+        ), mock.patch("symbraid.service.SymbraidIndexer", return_value=indexer):
             with self.assertRaises(RuntimeError):
                 self.service.apply_project_settings(
                     str(self.project_root), {**payload, "plan_hash": plan["plan_hash"]},

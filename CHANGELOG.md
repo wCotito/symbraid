@@ -8,8 +8,8 @@ release has been published.
 
 ### Added
 
-- Cross-platform Symbraid core, with compatibility command names documented as
-  migration aliases.
+- Cross-platform Symbraid core with standalone CLI, watcher, and read-only MCP
+  server.
 - Locale-first English and Russian documentation trees with parity and
   translation-staleness checks.
 - A committed MIT polyglot benchmark fixture, reproducible adapter manifests,

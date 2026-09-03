@@ -7,13 +7,14 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict
 
+from . import __version__
 from .config import Config
 from .embeddings import Embedder
 from .locking import ProjectLock
 from .paths import app_paths
 from .registry import PROJECT_OVERRIDE_KEYS, Registry, normalize_project_path, project_id
 from .secrets import SecretUpdate, env_reference, get_secret
-from .service import CodeIndexService
+from .service import SymbraidService
 
 
 def emit(value: Any) -> None:
@@ -79,13 +80,8 @@ def profile_set(registry: Registry, args, values: Dict[str, Any] | None = None) 
     return {"status": "ok", "profile_id": profile_id, "profile": public}
 
 
-def prepare_project_payload(
-    registry: Registry, path: str, payload: Dict[str, Any], store: bool = False,
-) -> Dict[str, Any]:
-    """Return a secret-free payload; persistence happens after validation.
-
-    The store argument remains accepted for transition-release callers.
-    """
+def prepare_project_payload(registry: Registry, path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a secret-free payload; persistence happens after validation."""
     value = dict(payload)
     if value.get("qdrant_api_key_env"):
         if "qdrant_api_key" in value:
@@ -102,7 +98,10 @@ def prepare_project_payload(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="symbraid", description="Independent semantic code index")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     commands = parser.add_subparsers(dest="command", required=True)
+
+    commands.add_parser("paths")
 
     project = commands.add_parser("project")
     project_commands = project.add_subparsers(dest="project_command", required=True)
@@ -110,7 +109,6 @@ def build_parser() -> argparse.ArgumentParser:
     project_commands.add_parser("list")
     remove = project_commands.add_parser("remove"); remove.add_argument("path")
     autowatch = project_commands.add_parser("autowatch"); autowatch.add_argument("path"); autowatch.add_argument("enabled", choices=("on", "off"))
-    legacy_watch = project_commands.add_parser("watch"); legacy_watch.add_argument("path"); legacy_watch.add_argument("enabled", choices=("on", "off"))
     override = project_commands.add_parser("override"); override.add_argument("path")
     for key in PROJECT_OVERRIDE_KEYS:
         option = "--" + key.replace("_", "-")
@@ -207,7 +205,16 @@ def validate_defaults(data: Dict[str, Any], candidate: Dict[str, Any]) -> None:
 
 def run(args) -> Any:
     registry = Registry()
-    service = CodeIndexService(registry)
+    service = SymbraidService(registry)
+    if args.command == "paths":
+        paths = app_paths()
+        return {
+            "status": "ok",
+            "config": str(paths.config),
+            "data": str(paths.data),
+            "cache": str(paths.cache),
+            "state": str(paths.state),
+        }
     if args.command == "project":
         if args.project_command == "register":
             return {"status": "ok", "project": registry.register_project(args.path)}
@@ -219,9 +226,7 @@ def run(args) -> Any:
             removed = data["projects"].pop(key, None) is not None; registry.save(data)
             return {"status": "ok", "removed": removed, "index_retained": True}
         project = registry.project(args.path)
-        if args.project_command in {"autowatch", "watch"}:
-            if args.project_command == "watch":
-                print("project watch is deprecated; use project autowatch", file=sys.stderr)
+        if args.project_command == "autowatch":
             project["auto_watch"] = args.enabled == "on"; registry.update_project(args.path, project)
             return {"status": "ok", "auto_watch": project["auto_watch"]}
         overrides = project.setdefault("overrides", {})
@@ -289,7 +294,7 @@ def run(args) -> Any:
             return service.settings_state(args.project)
         payload = stdin_json()
         if args.settings_command == "plan":
-            return service.plan_settings(args.project, prepare_project_payload(registry, args.project, payload, False))
+            return service.plan_settings(args.project, prepare_project_payload(registry, args.project, payload))
         if args.settings_command == "apply-project":
             prepared = prepare_project_payload(registry, args.project, payload)
             pending_secret = None
@@ -368,11 +373,6 @@ def main() -> int:
     except Exception as exc:
         print(json.dumps({"status": "error", "error": str(exc)}, ensure_ascii=False), file=sys.stderr)
         return 1
-
-
-def legacy_main() -> int:
-    print("warning: code-index is deprecated; use symbraid (alias removed in 2.0)", file=sys.stderr)
-    return main()
 
 
 if __name__ == "__main__":

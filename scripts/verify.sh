@@ -77,9 +77,7 @@ run_skill_validator() {
 }
 
 run_plugin_validator "$repo_root/plugins/symbraid-search"
-run_plugin_validator "$repo_root/plugins/hybrid-code-search"
 run_skill_validator "$repo_root/plugins/symbraid-search/skills/symbraid-search"
-run_skill_validator "$repo_root/plugins/hybrid-code-search/skills/hybrid-code-search"
 
 if [[ "$skip_extension" -eq 0 ]]; then
     npm_bin="$(command -v npm || true)"

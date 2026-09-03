@@ -21,7 +21,7 @@ function hasWindowsShellMetaCharacter(value) {
 function spawnSymbraid(executable, args, cwd, platform = process.platform) {
   const shell = isWindowsScript(executable, platform);
   if (shell && (hasWindowsShellMetaCharacter(executable) || args.some(hasWindowsShellMetaCharacter))) {
-    throw new Error('Refusing to pass shell metacharacters to a legacy Windows launcher');
+    throw new Error('Refusing to pass shell metacharacters to a Windows script launcher');
   }
   return cp.spawn(executable, args, {
     cwd,

@@ -1,5 +1,4 @@
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 
 function isFile(candidate, fsImpl = fs) {
@@ -24,12 +23,6 @@ function pathCandidates(command, env, platform, pathApi) {
   return directories.flatMap((directory) => names.map((name) => pathApi.join(directory, name)));
 }
 
-function legacyExecutablePath(env = process.env, platform = process.platform) {
-  const pathApi = platform === 'win32' ? path.win32 : path;
-  const localAppData = env.LOCALAPPDATA || pathApi.join(env.USERPROFILE || os.homedir(), 'AppData', 'Local');
-  return pathApi.join(localAppData, 'CodeIndex', 'bin', 'code-index.cmd');
-}
-
 function resolveExecutablePath(configuredPath = '', options = {}) {
   const env = options.env || process.env;
   const platform = options.platform || process.platform;
@@ -42,7 +35,7 @@ function resolveExecutablePath(configuredPath = '', options = {}) {
     if (isFile(candidate, fsImpl)) return candidate;
   }
 
-  return legacyExecutablePath(env, platform);
+  return 'symbraid';
 }
 
-module.exports = { legacyExecutablePath, resolveExecutablePath };
+module.exports = { resolveExecutablePath };

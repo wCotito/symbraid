@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hashlib
+import contextlib
+import io
 import json
 import subprocess
 import tempfile
@@ -9,8 +11,10 @@ import urllib.request
 import uuid
 from pathlib import Path
 
+from symbraid import __version__
+from symbraid.cli import build_parser
 from symbraid.config import Config
-from symbraid.indexer import CodeIndexer
+from symbraid.indexer import SymbraidIndexer
 from symbraid.lancedb_store import LanceDBStore
 from symbraid.locking import ProjectLock
 from symbraid.qdrant import QdrantStore
@@ -20,7 +24,7 @@ def config(backend, location):
     return Config.from_mapping({
         "backend": backend, "lancedb_path": location,
         "qdrant_url": "http://127.0.0.1:18133", "collection": location,
-        "embedding_dimension": 3, "lock_dir": Path(location).parent / "locks" if backend == "lancedb" else Path(tempfile.gettempdir()) / "code-index-tests",
+        "embedding_dimension": 3, "lock_dir": Path(location).parent / "locks" if backend == "lancedb" else Path(tempfile.gettempdir()) / "symbraid-tests",
     })
 
 
@@ -56,13 +60,21 @@ class QdrantContractTests(unittest.TestCase, StoreContract):
     def test_contract(self):
         try: urllib.request.urlopen("http://127.0.0.1:18133/collections", timeout=2)
         except Exception: self.skipTest("local Qdrant unavailable")
-        name = "code-index-test-" + uuid.uuid4().hex[:12]
+        name = "symbraid-test-" + uuid.uuid4().hex[:12]
         self.store = QdrantStore(config("qdrant", name))
         try: self.exercise()
         finally: self.store._request("DELETE", f"/collections/{name}", allow_404=True)
 
 
 class SafetyTests(unittest.TestCase):
+    def test_cli_metadata_commands(self):
+        self.assertEqual(build_parser().parse_args(["paths"]).command, "paths")
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output), self.assertRaises(SystemExit) as raised:
+            build_parser().parse_args(["--version"])
+        self.assertEqual(raised.exception.code, 0)
+        self.assertEqual(output.getvalue().strip(), f"symbraid {__version__}")
+
     def test_project_id_and_lock(self):
         with tempfile.TemporaryDirectory() as directory:
             first = ProjectLock(Path(directory), "repo", 1); second = ProjectLock(Path(directory), "repo", .1)
@@ -77,7 +89,7 @@ class SafetyTests(unittest.TestCase):
             (root / "src" / "ok.py").write_text("def ok(): pass\n", encoding="utf-8")
             (root / "nested" / "node_modules" / "bad.js").write_text("bad()", encoding="utf-8")
             cfg = Config.from_mapping({"backend": "lancedb", "lancedb_path": root / "db", "embedding_dimension": 3, "rg_path": "rg"})
-            files = CodeIndexer(cfg, None, None)._list_files(root)
+            files = SymbraidIndexer(cfg, None, None)._list_files(root)
             self.assertEqual([p.relative_to(root).as_posix() for p in files], ["src/ok.py"])
 
     def test_mcp_exposes_read_only_tools(self):

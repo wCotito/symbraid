@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
 
 from .embeddings import Embedder
-from .indexer import CodeIndexer, canonical_project, repo_identity
+from .indexer import SymbraidIndexer, canonical_project, repo_identity
 from .lancedb_store import LanceDBStore
 from .qdrant import QdrantStore
 from .locking import watcher_status
@@ -18,7 +18,7 @@ from .registry import INDEX_RECIPE_KEYS, PROJECT_OVERRIDE_KEYS, Registry
 from .secrets import SecretUpdate, get_secret
 
 
-class CodeIndexService:
+class SymbraidService:
     def __init__(self, registry: Optional[Registry] = None):
         self.registry = registry or Registry()
 
@@ -50,7 +50,7 @@ class CodeIndexService:
         project, source = self.registry.active_source(project_path)
         config = self._config(project, source)
         store = self._store(config)
-        return project, source, config, CodeIndexer(config, store, Embedder(config))
+        return project, source, config, SymbraidIndexer(config, store, Embedder(config))
 
     def index(self, project_path: str, force: bool = False) -> Dict[str, Any]:
         project, source, _, indexer = self._active(project_path)
@@ -64,7 +64,7 @@ class CodeIndexService:
 
     def status(self, project_path: str) -> Dict[str, Any]:
         project, source, config, _ = self._active(project_path)
-        result = CodeIndexer(config, self._store(config), Embedder(config)).index_status(project["path"])
+        result = SymbraidIndexer(config, self._store(config), Embedder(config)).index_status(project["path"])
         return {
             **result, "source_id": source["id"], "backend": source["backend"],
             "auto_watch": bool(project.get("auto_watch")),
@@ -78,7 +78,7 @@ class CodeIndexService:
             raise ValueError("query cannot be empty")
         project, source, config, _ = self._active(project_path)
         requested = max(1, min(int(top_k), 20))
-        results = CodeIndexer(config, self._store(config), Embedder(config)).semantic_search(
+        results = SymbraidIndexer(config, self._store(config), Embedder(config)).semantic_search(
             query, project["path"], requested, path_filter
         )["results"]
         for item in results:
@@ -105,7 +105,7 @@ class CodeIndexService:
             raise KeyError(f"Source does not exist: {source_id}")
         source = project["sources"][source_id]
         config = self._config(project, source)
-        status = CodeIndexer(config, self._store(config), Embedder(config)).index_status(project["path"])
+        status = SymbraidIndexer(config, self._store(config), Embedder(config)).index_status(project["path"])
         metadata = status.get("metadata") or {}
         required = {
             "schema_version": 1, "embedding_provider": config.embedding_provider,
@@ -307,7 +307,7 @@ class CodeIndexService:
                 if plan["impact"] == "transfer":
                     chunks = self._transfer(updated, source, target)
                 else:
-                    indexer = CodeIndexer(target_config, target_store, Embedder(target_config))
+                    indexer = SymbraidIndexer(target_config, target_store, Embedder(target_config))
                     result = indexer.index_project(project["path"], force=True)
                     chunks = int(result.get("chunks_total", result.get("chunks", result.get("chunk_count", 0))))
                     status = indexer.index_status(project["path"])

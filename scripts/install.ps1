@@ -1,9 +1,7 @@
 [CmdletBinding()]
 param(
     [switch]$SkipExtension,
-    [switch]$SkipCodexPlugin,
-    [switch]$ReplaceLegacyExtension,
-    [switch]$NonInteractive
+    [switch]$SkipCodexPlugin
 )
 
 $ErrorActionPreference = 'Stop'
@@ -74,7 +72,6 @@ if (-not $SkipExtension) {
             throw 'The VS Code extension package identity or version is not the expected Symbraid release.'
         }
 
-        # Complete VSIX validation must precede any legacy extension change.
         Invoke-Checked 'npx.cmd' @(
             'vsce', 'package', '--no-dependencies', '--allow-missing-repository',
             '--baseContentUrl', 'https://github.com/symbraid-project/symbraid/blob/main/extensions/vscode-symbraid',
@@ -84,36 +81,10 @@ if (-not $SkipExtension) {
             throw "VSIX packaging did not produce $vsix"
         }
 
-        $installedExtensions = (& code.cmd --list-extensions --show-versions | Out-String)
-        if ($LASTEXITCODE -ne 0) {
-            throw "code.cmd --list-extensions failed with exit code $LASTEXITCODE."
-        }
-        $legacyMatch = [regex]::Match($installedExtensions, '(?im)^\s*[^@\s]+\.code-index(?:@|$)')
-        $legacyInstalled = $legacyMatch.Success
-        $legacyId = if ($legacyInstalled) {
-            ($legacyMatch.Value -replace '^\s+', '') -replace '@.*$', ''
-        } else {
-            $null
-        }
-        if ($legacyInstalled -and -not $ReplaceLegacyExtension) {
-            $ci = $env:CI -match '^(?i:true|1|yes)$'
-            $nonInteractiveMode = $NonInteractive.IsPresent -or $ci -or (-not [Environment]::UserInteractive)
-            if ($nonInteractiveMode) {
-                throw 'A legacy Code Index extension is installed. Re-run with -ReplaceLegacyExtension to replace it.'
-            }
-            $confirmation = Read-Host 'Type ReplaceLegacyExtension to replace the legacy Code Index extension'
-            if ($confirmation -cne 'ReplaceLegacyExtension') {
-                throw 'Legacy extension replacement was not confirmed.'
-            }
-        }
-
         Invoke-Checked 'code.cmd' @('--install-extension', $vsix, '--force')
         $installedAfter = (& code.cmd --list-extensions --show-versions | Out-String)
         if ($LASTEXITCODE -ne 0 -or $installedAfter -notmatch '(?im)^\s*symbraid\.symbraid(?:@|$)') {
-            throw 'The new Symbraid VS Code extension was not verified after installation.'
-        }
-        if ($legacyInstalled) {
-            Invoke-Checked 'code.cmd' @('--uninstall-extension', $legacyId)
+            throw 'The Symbraid VS Code extension was not verified after installation.'
         }
     } finally {
         Pop-Location
@@ -134,8 +105,8 @@ if (-not $SkipCodexPlugin) {
     if ($marketplaces -notmatch [regex]::Escape($repoRoot)) {
         Invoke-Checked 'codex' @('plugin', 'marketplace', 'add', $repoRoot)
     }
-    Invoke-Checked 'codex' @('plugin', 'add', 'symbraid-search@semantic-code-index-kit')
+    Invoke-Checked 'codex' @('plugin', 'add', 'symbraid-search@symbraid')
 }
 
 Write-Host 'Symbraid installation completed.'
-Write-Host 'Start a new Codex session and reload the VS Code window to pick up the new integrations.'
+Write-Host 'Start a new Codex session and reload the VS Code window to pick up the integrations.'

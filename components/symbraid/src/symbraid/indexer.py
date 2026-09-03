@@ -177,7 +177,7 @@ def git_context(root: Path) -> Tuple[str, str]:
     return run("branch", "--show-current"), run("rev-parse", "HEAD")
 
 
-class CodeIndexer:
+class SymbraidIndexer:
     def __init__(self, config: Config, store: VectorStore, embedder: Embedder):
         self.config = config
         self.store = store

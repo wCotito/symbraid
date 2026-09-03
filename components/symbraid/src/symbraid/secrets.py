@@ -5,7 +5,6 @@ import re
 
 
 SERVICE = "Symbraid"
-LEGACY_SERVICE = "CodeIndex"
 _ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -39,14 +38,6 @@ def get_secret(reference: str) -> str:
     value = keyring.get_password(SERVICE, name)
     if value is not None:
         return value
-    legacy = keyring.get_password(LEGACY_SERVICE, name)
-    if legacy is not None:
-        # Copy to the new service; the legacy credential remains available for rollback.
-        try:
-            keyring.set_password(SERVICE, name, legacy)
-        except Exception:
-            pass
-        return legacy
     return ""
 
 

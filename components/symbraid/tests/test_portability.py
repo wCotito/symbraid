@@ -12,7 +12,7 @@ from pathlib import Path
 from unittest import mock
 
 from symbraid.config import Config
-from symbraid.indexer import CodeIndexer, repo_identity
+from symbraid.indexer import SymbraidIndexer, repo_identity
 from symbraid.locking import WatcherLease, watcher_status
 from symbraid.mcp_server import _HttpSecurity, _loopback, _resolve_project
 from symbraid.paths import AppPaths, app_paths
@@ -40,68 +40,16 @@ class PlatformPathTests(unittest.TestCase):
         )
 
 
-class MigrationTests(unittest.TestCase):
-    def test_v2_to_v3_preserves_source_and_old_registry(self):
+class SchemaTests(unittest.TestCase):
+    def test_old_schema_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            project_root = root / "repo"
-            project_root.mkdir()
-            source_dir = root / "legacy-source"
-            source_dir.mkdir()
+            config_path = Path(directory) / "config.json"
             data = default_registry()
             data["schema_version"] = 2
-            key = normalize_project_path(str(project_root))
-            data["projects"][key] = {
-                "path": str(project_root),
-                "project_id": "0123456789abcdef",
-                "watch_enabled": True,
-                "active_source_id": "managed-lancedb",
-                "overrides": {},
-                "sources": {
-                    "managed-lancedb": {
-                        "id": "managed-lancedb",
-                        "backend": "lancedb",
-                        "embedding_profile": "default-code",
-                        "location": {"directory": str(source_dir)},
-                        "recipe": {
-                            "max_file_bytes": 1048576,
-                            "chunk_chars": 1600,
-                            "chunk_overlap_chars": 200,
-                            "rg_path": "rg",
-                        },
-                    }
-                },
-            }
-            registry_path = root / "config.json"
-            original = json.dumps(data)
-            registry_path.write_text(original, encoding="utf-8")
-            migrated = Registry(registry_path).load()
-            project = migrated["projects"][key]
-            self.assertEqual(migrated["schema_version"], 3)
-            self.assertTrue(project["auto_watch"])
-            self.assertNotIn("watch_enabled", project)
-            self.assertEqual(project["sources"]["managed-lancedb"]["location"]["directory"], str(source_dir))
-            self.assertTrue(source_dir.is_dir())
-            self.assertEqual((root / "config.json.v2.bak").read_text(encoding="utf-8"), original)
+            config_path.write_text(json.dumps(data), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "Unsupported Symbraid config schema: 2"):
+                Registry(config_path).load()
 
-    def test_default_registry_copy_keeps_legacy_file_unchanged(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            legacy = root / "CodeIndex"
-            legacy.mkdir()
-            old = default_registry()
-            old["schema_version"] = 2
-            legacy_file = legacy / "config.json"
-            legacy_text = json.dumps(old)
-            legacy_file.write_text(legacy_text, encoding="utf-8")
-            paths = AppPaths(root / "new-config", root / "new-data", root / "new-cache", root / "new-state")
-            with mock.patch("symbraid.registry.app_paths", return_value=paths), mock.patch(
-                "symbraid.registry.legacy_app_root", return_value=legacy
-            ):
-                registry = Registry()
-                self.assertEqual(registry.load()["schema_version"], 3)
-            self.assertEqual(legacy_file.read_text(encoding="utf-8"), legacy_text)
-            self.assertTrue((paths.config / "config.json.v2.bak").is_file())
 
 
 class SecretTests(unittest.TestCase):
@@ -146,7 +94,7 @@ class WatcherTests(unittest.TestCase):
             fake_watchfiles = types.SimpleNamespace(watch=lambda *args, **kwargs: iter(()))
             with mock.patch.dict(sys.modules, {"watchfiles": fake_watchfiles}), mock.patch(
                 "symbraid.watcher.app_paths", return_value=paths
-            ), mock.patch("symbraid.watcher.CodeIndexService") as service:
+            ), mock.patch("symbraid.watcher.SymbraidService") as service:
                 watch_project(str(project), registry=registry, stop_event=stop)
             service.return_value.index.assert_not_called()
 
@@ -174,7 +122,7 @@ class WatcherTests(unittest.TestCase):
                 "lock_dir": root / "locks",
             })
             store = Store()
-            indexer = CodeIndexer(cfg, store, mock.Mock())
+            indexer = SymbraidIndexer(cfg, store, mock.Mock())
             with mock.patch.object(indexer, "_list_files", return_value=[file_path]), mock.patch.object(
                 indexer, "_existing_files", return_value={"x.py": {"old"}}
             ), mock.patch.object(indexer, "chunks_for_file", return_value=[]), mock.patch.object(
