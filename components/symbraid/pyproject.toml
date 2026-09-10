@@ -13,7 +13,7 @@ authors = [{name = "Symbraid Contributors"}]
 dependencies = [
   "fastembed>=0.7,<1",
   "keyring>=25,<26",
-  "lancedb>=0.37,<0.38",
+  "lancedb>=0.37,<0.39",
   "mcp>=1.13,<2",
   "tree-sitter-language-pack>=0.9,<1",
   "uvicorn>=0.30,<1",
