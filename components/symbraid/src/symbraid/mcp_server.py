@@ -134,14 +134,19 @@ def run_mcp(
     host: str = "127.0.0.1",
     port: int = 8765,
     token_env: str | None = None,
+    allow_all_projects: bool = False,
 ) -> None:
     if transport == "stdio":
+        if allow_all_projects:
+            raise ValueError("--allow-all-projects is supported only with --transport streamable-http")
         build_server(project).run(transport="stdio")
         return
     if transport != "streamable-http":
         raise ValueError(f"Unsupported MCP transport: {transport}")
-    if not project:
-        raise ValueError("--project is required for streamable-http")
+    if bool(project) == bool(allow_all_projects):
+        raise ValueError(
+            "streamable-http requires exactly one of --project or --allow-all-projects"
+        )
     if not _loopback(host) or host not in {"127.0.0.1", "::1"}:
         raise ValueError("Streamable HTTP may bind only to 127.0.0.1 or ::1")
     reference = token_env or os.environ.get("SYMBRAID_MCP_TOKEN_ENV", "")
@@ -164,14 +169,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--project")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
-    parser.add_argument("--token-env")
+    parser.add_argument("--token-env", "--auth-token-env", dest="token_env")
+    parser.add_argument(
+        "--allow-all-projects",
+        action="store_true",
+        help="For streamable-http, allow requests for all registered projects",
+    )
     return parser
 
 
 def main() -> int:
     args = build_parser().parse_args()
     try:
-        run_mcp(args.transport, args.project, args.host, args.port, args.token_env)
+        run_mcp(
+            args.transport, args.project, args.host, args.port, args.token_env,
+            args.allow_all_projects,
+        )
         return 0
     except Exception as exc:
         write_json(error_payload(exc), stream=sys.stderr)

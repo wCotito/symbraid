@@ -94,6 +94,12 @@ jobs:
           python -m pip install -e "./components/symbraid[dev]"
       - name: Run real MCP stdio handshake
         run: python scripts/verify_mcp.py
+      - name: Run real MCP HTTP handshake
+        run: python scripts/verify_mcp.py --transport streamable-http
+      - name: Run Codex HTTP helper tests
+        if: runner.os == 'Windows' && matrix.python == '3.13'
+        shell: pwsh
+        run: python -m unittest scripts.test_configure_codex_http_mcp
       - name: Run core and LanceDB contract tests
         run: python -m unittest discover -s components/symbraid/tests -p "test_*.py"
       - name: MCP read-only conformance check

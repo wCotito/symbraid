@@ -14,7 +14,7 @@ from unittest import mock
 from symbraid.config import Config
 from symbraid.indexer import SymbraidIndexer, repo_identity
 from symbraid.locking import ProjectLock, WatcherLease, watcher_status
-from symbraid.mcp_server import _HttpSecurity, _loopback, _resolve_project
+from symbraid.mcp_server import _HttpSecurity, _loopback, _resolve_project, run_mcp
 from symbraid.paths import AppPaths, app_paths
 from symbraid.registry import Registry, default_registry, normalize_project_path
 from symbraid.secrets import env_reference, get_secret
@@ -192,6 +192,55 @@ class McpSecurityTests(unittest.TestCase):
         self.assertTrue(_loopback("::1"))
         self.assertFalse(_loopback("0.0.0.0"))
         self.assertFalse(_loopback("192.0.2.1"))
+
+    def test_http_requires_explicit_project_scope(self):
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            run_mcp("streamable-http", token_env="SYMBRAID_TEST_TOKEN")
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            run_mcp(
+                "streamable-http", project="project", token_env="SYMBRAID_TEST_TOKEN",
+                allow_all_projects=True,
+            )
+
+    def test_http_all_projects_mode_builds_unbound_server(self):
+        fake_server = mock.Mock()
+        fake_server.streamable_http_app.return_value = mock.Mock()
+        fake_uvicorn = types.SimpleNamespace(run=mock.Mock())
+        with mock.patch.dict(os.environ, {"SYMBRAID_TEST_TOKEN": "secret-value"}, clear=False), mock.patch(
+            "symbraid.mcp_server.build_server", return_value=fake_server
+        ) as build, mock.patch.dict(sys.modules, {"uvicorn": fake_uvicorn}):
+            run_mcp(
+                "streamable-http", host="127.0.0.1", port=8765,
+                token_env="SYMBRAID_TEST_TOKEN", allow_all_projects=True,
+            )
+        build.assert_called_once_with(None, host="127.0.0.1", port=8765)
+        fake_uvicorn.run.assert_called_once()
+
+
+    def test_stdio_rejects_all_projects_mode_before_starting_server(self):
+        with mock.patch("symbraid.mcp_server.build_server") as build:
+            with self.assertRaisesRegex(ValueError, "only with --transport streamable-http"):
+                run_mcp("stdio", allow_all_projects=True)
+        build.assert_not_called()
+
+    def test_http_project_scope_builds_bound_server(self):
+        fake_server = mock.Mock()
+        fake_server.streamable_http_app.return_value = mock.Mock()
+        fake_uvicorn = types.SimpleNamespace(run=mock.Mock())
+        with mock.patch.dict(os.environ, {"SYMBRAID_TEST_TOKEN": "secret-value"}, clear=False), mock.patch(
+            "symbraid.mcp_server.build_server", return_value=fake_server
+        ) as build, mock.patch.dict(sys.modules, {"uvicorn": fake_uvicorn}):
+            run_mcp(
+                "streamable-http", project="project", host="127.0.0.1", port=8765,
+                token_env="SYMBRAID_TEST_TOKEN",
+            )
+        build.assert_called_once_with("project", host="127.0.0.1", port=8765)
+        fake_uvicorn.run.assert_called_once()
+
+    def test_http_scope_errors_happen_before_uvicorn_import(self):
+        with mock.patch.dict(sys.modules, {"uvicorn": None}):
+            with self.assertRaisesRegex(ValueError, "exactly one"):
+                run_mcp("streamable-http", token_env="SYMBRAID_TEST_TOKEN")
 
     def test_http_requires_token_host_and_origin(self):
         called = []

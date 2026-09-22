@@ -168,7 +168,12 @@ def build_parser() -> argparse.ArgumentParser:
     mcp_command.add_argument("--project")
     mcp_command.add_argument("--host", default="127.0.0.1")
     mcp_command.add_argument("--port", type=int, default=8765)
-    mcp_command.add_argument("--token-env")
+    mcp_command.add_argument("--token-env", "--auth-token-env", dest="token_env")
+    mcp_command.add_argument(
+        "--allow-all-projects",
+        action="store_true",
+        help="For streamable-http, allow requests for all registered projects",
+    )
     return parser
 
 
@@ -349,7 +354,10 @@ def run(args) -> Any:
         return None
     if args.command == "mcp":
         from .mcp_server import run_mcp
-        run_mcp(args.transport, args.project, args.host, args.port, args.token_env)
+        run_mcp(
+            args.transport, args.project, args.host, args.port, args.token_env,
+            args.allow_all_projects,
+        )
         return None
     raise RuntimeError("Unknown command")
 
