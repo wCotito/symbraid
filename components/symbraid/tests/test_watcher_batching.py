@@ -154,7 +154,9 @@ class WatcherBatchingTests(unittest.TestCase):
             [0.0, 2.0, 4.0, 8.0, 9.0],
             events.append,
         )
-        service.refresh.assert_called_once_with(str(project), ["a.py", "b.py"])
+        service.refresh.assert_called_once_with(
+            str(project.resolve()), ["a.py", "b.py"]
+        )
         self.assertEqual([event["event"] for event in events].count("refresh"), 1)
 
     def test_continuous_changes_do_not_flush_intermediate_state(self):
