@@ -30,22 +30,22 @@
     },
     {
       "path": "docs/en/cli.md",
-      "source_sha256": "762e00730a9f239ada200314fa6c763f35e500fcc3e7bdc77644cf383e0fee26",
+      "source_sha256": "75a2da7837dd146b160d733c8a4038fc135cb2c8496df517b97ea595552f6fb5",
       "translations": {
         "ru": {
           "path": "docs/ru/cli.md",
-          "sha256": "dedaa529c57290f4722b2230c63406bb8f931bb595a63146b598841cff2eac82",
+          "sha256": "dfd9ffbffddaa9c925d853f7da8bc3c2c1c5d5d329480592a159940bc3e7e66e",
           "status": "current"
         }
       }
     },
     {
       "path": "docs/en/configuration.md",
-      "source_sha256": "7a8381561182740672d5d1014b4ab657ae9c31a3af4f4b676ed596a7a8e453e8",
+      "source_sha256": "05c5178d889205de24965a32c11bf398cba504330742dac83f3fd271bf83ee4f",
       "translations": {
         "ru": {
           "path": "docs/ru/configuration.md",
-          "sha256": "a41878c575a9bd8a390c5f98650b57cec500c96c64510fd64c30c5a74d40ff99",
+          "sha256": "4dd7e4bb291b7ab875c40ea04c6668395aaca271f79d43021ebaf8a2df6481da",
           "status": "current"
         }
       }
@@ -74,22 +74,22 @@
     },
     {
       "path": "docs/en/integrations/codex.md",
-      "source_sha256": "18aab563018922282786344697c4c594a03bbbc9e98cf15880576f111a2711e5",
+      "source_sha256": "7161cec979a622c43ce1fb49781e9ad4f0570064f646ebac8e3787ef2757a787",
       "translations": {
         "ru": {
           "path": "docs/ru/integrations/codex.md",
-          "sha256": "fdc0fd19da62e721d589ae00429b6ade6a356f9d6baf368f5965bd730a570b1e",
+          "sha256": "c0bc5203d9e4c32888b49a6e4f2d3d4157cb30186114b2d6117be7a3c2d235fe",
           "status": "current"
         }
       }
     },
     {
       "path": "docs/en/integrations/mcp.md",
-      "source_sha256": "1f407e62a85441bb8936b175e4e2cd54b9749c28f2a35aa2047b147f1d0b9e87",
+      "source_sha256": "d3bd44f8974dcbf838ad957e7fd261580d0ed311d89ba6a3f213f56db5ccebba",
       "translations": {
         "ru": {
           "path": "docs/ru/integrations/mcp.md",
-          "sha256": "8beffbd4940da1380e7af9742563b38a4a8f1cd9f7d7baf65dbd3d8b74c49d88",
+          "sha256": "c764b42ba073abe5d8f8b036b54bea57774c51c5f95707b3d52afd565bbc23c1",
           "status": "current"
         }
       }
@@ -118,11 +118,11 @@
     },
     {
       "path": "docs/en/operations/troubleshooting.md",
-      "source_sha256": "e3e0bc045f21edeb55d645df434399c08407dadde4a821024a9fcd5a88b5f2bc",
+      "source_sha256": "8019d785a970461c54273c1fd9b732cb5bf6d312cb103ddabdd29a600f070702",
       "translations": {
         "ru": {
           "path": "docs/ru/operations/troubleshooting.md",
-          "sha256": "0f88923ff5e72d0fe537a9799c25872604bdb16b7c6b5e1bd14ed26b5bb5d680",
+          "sha256": "6fb52d9041cf039208da7e9a93c61ed367225336f07edcda349bb4caa8506c68",
           "status": "current"
         }
       }

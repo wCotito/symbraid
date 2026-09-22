@@ -123,11 +123,16 @@ release's configuration schema if its field names differ:
 ## Optional HTTP transport
 
 Start HTTP only for an explicit local integration, using a token supplied via
-the environment. Never commit a bearer value:
+the environment. Bind the server to one project by default. Never commit a
+bearer value:
 
 ```text
-symbraid mcp --transport streamable-http --host 127.0.0.1 --port 8765 --token-env SYMBRAID_MCP_TOKEN
+symbraid mcp --transport streamable-http --project /absolute/project --host 127.0.0.1 --port 8765 --auth-token-env SYMBRAID_MCP_TOKEN
 ```
+
+To serve every registered project from one process, replace `--project ...` with
+`--allow-all-projects`. This broader scope is always explicit; requests must still
+provide `project_path`.
 
 The endpoint is typically `http://127.0.0.1:8765/mcp`. A generic HTTP client
 entry is shown below; URL, transport, and header field names vary by client and

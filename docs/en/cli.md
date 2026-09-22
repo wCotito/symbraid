@@ -66,7 +66,8 @@ the prior source remains a rollback option.
 
 ```text
 symbraid mcp                 # stdio, the default
-symbraid mcp --http 127.0.0.1:8765  # explicit loopback opt-in
+symbraid mcp --transport streamable-http --project /absolute/project --host 127.0.0.1 --port 8765 --auth-token-env SYMBRAID_MCP_TOKEN  # explicit loopback opt-in
+symbraid mcp --transport streamable-http --allow-all-projects --host 127.0.0.1 --port 8765 --auth-token-env SYMBRAID_MCP_TOKEN  # all registered projects
 ```
 
 Do not print diagnostics to the stdio process. The gateway exposes only

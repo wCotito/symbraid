@@ -10,6 +10,9 @@ release has been published.
 
 - Cross-platform Symbraid core with standalone CLI, watcher, and read-only MCP
   server.
+- Explicit `--allow-all-projects` mode for a bearer-protected, loopback-only HTTP MCP
+  server, plus an idempotent Windows Codex setup/status/remove helper with
+  optional per-user logon startup.
 - Locale-first English and Russian documentation trees with parity and
   translation-staleness checks.
 - Build-only GitHub Actions, issue forms, pull-request guidance, and dependency

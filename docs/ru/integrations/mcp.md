@@ -124,11 +124,16 @@ claude mcp add io.github.wcotito/symbraid -- symbraid mcp --transport stdio
 ## Необязательный HTTP-транспорт
 
 Включайте HTTP только для явной локальной интеграции; токен передавайте через
-переменную окружения. Никогда не коммитьте значение bearer-токена:
+переменную окружения. По умолчанию привязывайте сервер к одному проекту. Никогда
+не коммитьте значение bearer-токена:
 
 ```text
-symbraid mcp --transport streamable-http --host 127.0.0.1 --port 8765 --token-env SYMBRAID_MCP_TOKEN
+symbraid mcp --transport streamable-http --project /absolute/project --host 127.0.0.1 --port 8765 --auth-token-env SYMBRAID_MCP_TOKEN
 ```
+
+Чтобы один процесс обслуживал все зарегистрированные проекты, замените
+`--project ...` на `--allow-all-projects`. Расширенная область всегда включается
+явно; запросы по-прежнему должны передавать `project_path`.
 
 Обычно endpoint имеет вид `http://127.0.0.1:8765/mcp`. Ниже приведена общая
 запись HTTP-клиента; URL, transport и имена полей заголовков зависят от клиента

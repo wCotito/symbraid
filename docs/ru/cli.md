@@ -62,7 +62,8 @@ count, затем переключает active source; прежний source с
 
 ~~~text
 symbraid mcp
-symbraid mcp --http 127.0.0.1:8765
+symbraid mcp --transport streamable-http --project /absolute/project --host 127.0.0.1 --port 8765 --auth-token-env SYMBRAID_MCP_TOKEN
+symbraid mcp --transport streamable-http --allow-all-projects --host 127.0.0.1 --port 8765 --auth-token-env SYMBRAID_MCP_TOKEN
 ~~~
 
 Stdio — default, HTTP — explicit loopback opt-in. Gateway предоставляет только

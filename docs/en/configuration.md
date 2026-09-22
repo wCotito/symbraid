@@ -22,7 +22,7 @@ written to JSON or logs.
 ```text
 symbraid defaults show
 symbraid defaults set --backend lancedb
-symbraid project override /absolute/project --debounce-ms 2000
+symbraid project override /absolute/project --debounce-ms 5000
 symbraid project override /absolute/project --embedding-profile local-code
 ```
 
@@ -32,12 +32,18 @@ Common settings include:
 - `embedding_profile`;
 - Qdrant URL and `secret_ref`;
 - local store root;
-- debounce and bulk-change thresholds;
+- watcher quiet-period debounce and bulk-change thresholds;
 - maximum file size; and
 - chunk size, overlap, batch size, and `rg` path.
 
 Project configuration stores only overrides plus the normalized path,
 `project_id`, watcher state, managed sources, and one `active_source_id`.
+
+`debounce_ms` is the required quiet period after the last filesystem event, not
+a maximum batching window. Its default is 5000 ms. Repeated edits keep extending
+the deadline, so the watcher indexes only the final accumulated set of paths.
+Registry schema 3 is migrated to schema 4 on load: the old global default of
+1500 ms becomes 5000 ms, while custom defaults and project overrides are kept.
 
 ## Safe secret input
 

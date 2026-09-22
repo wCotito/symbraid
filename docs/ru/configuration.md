@@ -20,7 +20,7 @@ keyring. Для headless Linux можно явно включить ссылку
 ~~~text
 symbraid defaults show
 symbraid defaults set --backend lancedb
-symbraid project override /absolute/project --debounce-ms 2000
+symbraid project override /absolute/project --debounce-ms 5000
 symbraid project override /absolute/project --embedding-profile local-code
 ~~~
 
@@ -30,6 +30,13 @@ chunk size/overlap/batch size и путь к rg.
 
 Project config хранит normalized path, project_id, состояние watcher, managed
 sources и один active_source_id, а также только отличия от defaults.
+
+`debounce_ms` задаёт обязательный период тишины после последнего filesystem
+event, а не максимальное окно batch. Значение по умолчанию — 5000 мс. Каждая
+новая правка переносит deadline, поэтому watcher индексирует только итоговый
+накопленный набор путей. При загрузке registry schema 3 мигрирует в schema 4:
+старый global default 1500 мс становится 5000 мс, а custom defaults и project
+overrides сохраняются.
 
 ## Безопасный ввод ключа
 
