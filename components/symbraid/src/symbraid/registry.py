@@ -13,7 +13,10 @@ from .config import Config
 from .paths import app_paths
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
+PREVIOUS_SCHEMA_VERSION = 3
+OLD_DEBOUNCE_DEFAULT_MS = 1500
+DEFAULT_DEBOUNCE_MS = 5000
 INDEX_RECIPE_KEYS = ("max_file_bytes", "chunk_chars", "chunk_overlap_chars", "rg_path")
 PROJECT_OVERRIDE_KEYS = (
     "backend", "embedding_profile", "qdrant_url", "qdrant_secret_ref", "lancedb_root",
@@ -46,7 +49,7 @@ def default_registry() -> Dict[str, Any]:
             "qdrant_url": "http://127.0.0.1:18133",
             "qdrant_secret_ref": "",
             "lancedb_root": str(paths.data / "lancedb"),
-            "debounce_ms": 1500,
+            "debounce_ms": DEFAULT_DEBOUNCE_MS,
             "bulk_change_threshold": 100,
             "max_file_bytes": 1048576,
             "chunk_chars": 1600,
@@ -78,6 +81,14 @@ class Registry:
             return default_registry()
         raw = json.loads(self.path.read_text(encoding="utf-8"))
         version = int(raw.get("schema_version", 0))
+        if version == PREVIOUS_SCHEMA_VERSION:
+            raw = copy.deepcopy(raw)
+            defaults = raw.setdefault("defaults", {})
+            if defaults.get("debounce_ms") == OLD_DEBOUNCE_DEFAULT_MS:
+                defaults["debounce_ms"] = DEFAULT_DEBOUNCE_MS
+            raw["schema_version"] = SCHEMA_VERSION
+            self.save(raw)
+            version = SCHEMA_VERSION
         if version != SCHEMA_VERSION:
             raise ValueError(f"Unsupported Symbraid config schema: {version}")
         merged = default_registry()

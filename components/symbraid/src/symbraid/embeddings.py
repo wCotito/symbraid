@@ -4,6 +4,8 @@ import json
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Iterable, List
 
@@ -12,6 +14,37 @@ from .config import Config
 
 class EmbeddingError(RuntimeError):
     pass
+
+
+class TransientEmbeddingError(EmbeddingError):
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        retry_after_seconds: float | None = None,
+    ):
+        super().__init__(message)
+        self.status_code = status_code
+        self.retry_after_seconds = retry_after_seconds
+
+
+def _parse_retry_after(value: str | None, now: datetime | None = None) -> float | None:
+    if not value:
+        return None
+    value = value.strip()
+    try:
+        return max(0.0, float(value))
+    except ValueError:
+        pass
+    try:
+        target = parsedate_to_datetime(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if target.tzinfo is None:
+        target = target.replace(tzinfo=timezone.utc)
+    current = now or datetime.now(timezone.utc)
+    return max(0.0, (target - current).total_seconds())
 
 
 class Embedder:
@@ -62,21 +95,36 @@ class Embedder:
         request = urllib.request.Request(endpoint, data=payload, headers=headers, method="POST")
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         last_error: Exception | None = None
+        last_status: int | None = None
         for attempt in range(3):
             try:
                 with opener.open(request, timeout=120) as response:
                     body = json.loads(response.read().decode("utf-8"))
                 break
             except urllib.error.HTTPError as exc:
-                if exc.code not in {408, 429, 500, 502, 503, 504}:
+                if exc.code == 429:
+                    retry_after = _parse_retry_after(
+                        exc.headers.get("Retry-After") if exc.headers is not None else None
+                    )
+                    raise TransientEmbeddingError(
+                        "Embedding endpoint rate limited: HTTP 429",
+                        status_code=429,
+                        retry_after_seconds=retry_after,
+                    ) from exc
+                if exc.code not in {408, 500, 502, 503, 504}:
                     raise EmbeddingError(f"Embedding endpoint failed: HTTP {exc.code}") from exc
                 last_error = exc
+                last_status = exc.code
             except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
                 last_error = exc
             if attempt < 2:
                 time.sleep(0.25 * (2**attempt))
         else:
-            raise EmbeddingError(f"Embedding endpoint failed after 3 attempts: {last_error}") from last_error
+            detail = f"HTTP {last_status}" if last_status is not None else str(last_error)
+            raise TransientEmbeddingError(
+                f"Embedding endpoint failed after 3 attempts: {detail}",
+                status_code=last_status,
+            ) from last_error
         data = sorted(body.get("data", []), key=lambda item: item.get("index", 0))
         vectors = [item["embedding"] for item in data]
         if len(vectors) != len(texts):
