@@ -70,7 +70,7 @@ if [[ "$skip_extension" -eq 0 ]]; then
     [[ -f "$extension_root/package.json" ]] || die "Symbraid VS Code extension was not found: $extension_root"
     extension_version="$(
         cd -- "$extension_root"
-        "$node_bin" -p "const p=require('./package.json'); if (p.name !== 'symbraid' || p.publisher !== 'symbraid' || p.version !== '0.3.0') process.exit(1); p.version"
+        "$node_bin" -p "const p=require('./package.json'); if (p.name !== 'symbraid' || p.publisher !== 'symbraid' || p.version !== '0.4.0') process.exit(1); p.version"
     )" || die 'The VS Code extension package identity or version is not the expected Symbraid release.'
     tmp_base="$(printenv TMPDIR || true)"
     [[ -n "$tmp_base" ]] || tmp_base=/tmp

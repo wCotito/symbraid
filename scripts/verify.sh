@@ -92,7 +92,7 @@ if [[ "$skip_extension" -eq 0 ]]; then
         "$node_bin" --check executable.js
         "$node_bin" --check managePanel.js
         "$node_bin" --check media/manage.js
-        "$node_bin" -e "const p=require('./package.json'); if (p.name !== 'symbraid' || p.publisher !== 'symbraid' || p.version !== '0.3.0') process.exit(1)"
+        "$node_bin" -e "const p=require('./package.json'); if (p.name !== 'symbraid' || p.publisher !== 'symbraid' || p.version !== '0.4.0') process.exit(1)"
     )
     installed_extensions="$("$code_bin" --list-extensions --show-versions)"
     printf '%s\n' "$installed_extensions" | grep -Eiq '(^|[[:space:]])symbraid[.]symbraid(@|$)' ||

@@ -1,6 +1,6 @@
 {
   "name": "symbraid-search",
-  "version": "0.3.0+codex.20260902131209",
+  "version": "0.4.0+codex.20260922020223",
   "description": "Read-only semantic search through Symbraid with exact and AST verification workflows.",
   "author": {
     "name": "Symbraid Contributors"

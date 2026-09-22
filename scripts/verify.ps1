@@ -85,7 +85,7 @@ if (-not $SkipExtension) {
             Invoke-Checked 'node' @('--check', (Join-Path $extensionRoot $source))
         }
         $package = Get-Content -LiteralPath (Join-Path $extensionRoot 'package.json') -Raw | ConvertFrom-Json
-        if ($package.name -ne 'symbraid' -or $package.publisher -ne 'symbraid' -or $package.version -ne '0.3.0') {
+        if ($package.name -ne 'symbraid' -or $package.publisher -ne 'symbraid' -or $package.version -ne '0.4.0') {
             throw 'The VS Code extension package identity or version is not the expected Symbraid release.'
         }
         $installed = (& code.cmd --list-extensions --show-versions | Out-String)

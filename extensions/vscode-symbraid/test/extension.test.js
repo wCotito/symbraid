@@ -17,7 +17,7 @@ const {
 
 assert.strictEqual(manifest.name, 'symbraid');
 assert.strictEqual(manifest.publisher, 'symbraid');
-assert.strictEqual(manifest.version, '0.3.0');
+assert.strictEqual(manifest.version, '0.4.0');
 assert.ok(manifest.contributes.configuration.properties['symbraid.executablePath']);
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'symbraid-extension-'));

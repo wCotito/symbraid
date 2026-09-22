@@ -21,7 +21,7 @@ class ConfigureCodexHttpMcpTests(unittest.TestCase):
         self.fake = self.bin / "symbraid.cmd"
         self.fake.write_text(
             "@echo off\r\n"
-            'if "%1"=="--version" echo symbraid 0.3.0\r\n'
+            'if "%1"=="--version" echo symbraid 0.4.0\r\n'
             'if "%1"=="mcp" if "%2"=="--help" echo streamable-http --allow-all-projects --auth-token-env\r\n'
             "exit /b 0\r\n",
             encoding="utf-8",
