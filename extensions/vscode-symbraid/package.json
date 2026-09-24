@@ -33,5 +33,5 @@
     "test": "node test/extension.test.js && node test/ui.test.js",
     "package": "vsce package --no-dependencies --baseContentUrl https://github.com/wCotito/symbraid/blob/main/extensions/vscode-symbraid"
   },
-  "devDependencies": { "@vscode/vsce": "^3.6.0" }
+  "devDependencies": { "@vscode/vsce": "^4.0.0" }
 }
