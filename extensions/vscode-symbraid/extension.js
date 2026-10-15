@@ -224,6 +224,7 @@ class Controller {
   }
 
   async setAutoWatch(folder, enabled) {
+    if (enabled) await this.runCli(['project', 'register', folder.uri.fsPath], folder.uri.fsPath);
     await this.runCli(['project', 'autowatch', folder.uri.fsPath, enabled ? 'on' : 'off'], folder.uri.fsPath);
     const key = folderKey(folder);
     const state = this.states.get(key) || {};

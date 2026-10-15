@@ -16,7 +16,7 @@ symbraid project register /absolute/project
 symbraid project list
 symbraid project autowatch /absolute/project on
 symbraid source list /absolute/project
-symbraid source use /absolute/project managed-lancedb
+symbraid source use /absolute/project <source-id-from-list>
 ```
 
 `project remove` removes only registry metadata by default. Physical managed
@@ -35,6 +35,13 @@ symbraid profile test local-code
 Settings payloads and secret values are accepted through stdin. A settings plan
 classifies a change as `configuration-only`, `transfer`, or `reindex`; applying
 an old plan hash is rejected.
+
+For an unregistered directory, `settings show --project` returns a read-only
+preview with `project.registered=false`, global effective settings, and no
+active source. `settings plan` returns a `register` plan for that directory;
+only `settings apply-project` with its matching hash creates the initial
+managed source. The registration payload can keep global defaults or override
+storage and embedding settings; `auto_watch=true` saves the enabled preference.
 
 ## Indexing and search
 

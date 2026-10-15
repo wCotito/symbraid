@@ -195,6 +195,8 @@ def validate_defaults(data: Dict[str, Any], candidate: Dict[str, Any]) -> None:
     profile = data["profiles"].get(candidate.get("embedding_profile"))
     if profile is None:
         raise KeyError(f"Profile does not exist: {candidate.get('embedding_profile')}")
+    if profile.get("scope", "global") != "global":
+        raise ValueError("Global defaults require a global embedding profile")
     config = Config.from_mapping({
         **candidate,
         "collection": "settings-validation",

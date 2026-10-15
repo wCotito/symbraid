@@ -6,6 +6,20 @@ release has been published.
 
 ## [Unreleased]
 
+### Fixed
+
+- New directories stay unregistered when opened in VS Code or viewed in Manage.
+  The status icon explicitly enables a project with global defaults; Manage
+  previews those defaults and confirms registration with global or custom
+  storage and model settings before starting the watcher. Project loading
+  failures preserve global settings and model profiles in Manage.
+- Re-registering a removed project creates a unique managed source and preserves
+  retained indexes. Registration plans reject changes to the selected embedding
+  profile after planning, including provider, model, dimension, endpoint, and
+  credential reference.
+- Global defaults reject project-scoped embedding profiles, and new project
+  registration validates profile ownership before saving its configuration.
+
 ## [0.4.0] - 2026-09-22
 
 ### Added

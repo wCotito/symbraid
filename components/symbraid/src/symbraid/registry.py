@@ -6,6 +6,7 @@ import json
 import os
 import re
 import tempfile
+import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -111,7 +112,27 @@ class Registry:
             if os.path.exists(temporary):
                 os.unlink(temporary)
 
-    def register_project(self, project_path: str) -> Dict[str, Any]:
+    def prepare_project(
+        self, project_path: str, overrides: Optional[Dict[str, Any]] = None, auto_watch: bool = False,
+    ) -> Dict[str, Any]:
+        """Build a new project's configuration without persisting or opening a store."""
+        root = Path(project_path).expanduser().resolve()
+        if not root.is_dir():
+            raise ValueError(f"Project directory does not exist: {root}")
+        data = self.load()
+        overrides = {key: value for key, value in (overrides or {}).items() if key in PROJECT_OVERRIDE_KEYS}
+        settings = {**data["defaults"], **overrides}
+        identifier = project_id(str(root))
+        source_id = f"managed-{settings['backend']}-{uuid.uuid4().hex}"
+        source = self._managed_source(data, root, identifier, settings["backend"], source_id=source_id, settings=settings)
+        return {
+            "path": str(root), "project_id": identifier, "auto_watch": bool(auto_watch),
+            "active_source_id": source["id"], "overrides": overrides, "sources": {source["id"]: source},
+        }
+
+    def register_project(
+        self, project_path: str, overrides: Optional[Dict[str, Any]] = None, auto_watch: bool = False,
+    ) -> Dict[str, Any]:
         root = Path(project_path).expanduser().resolve()
         if not root.is_dir():
             raise ValueError(f"Project directory does not exist: {root}")
@@ -119,12 +140,14 @@ class Registry:
         key = normalize_project_path(str(root))
         if key in data["projects"]:
             return data["projects"][key]
-        identifier = project_id(str(root))
-        source = self._managed_source(data, root, identifier, data["defaults"]["backend"])
-        project = {
-            "path": str(root), "project_id": identifier, "auto_watch": False,
-            "active_source_id": source["id"], "overrides": {}, "sources": {source["id"]: source},
-        }
+        project = self.prepare_project(project_path, overrides, auto_watch)
+        source = project["sources"][project["active_source_id"]]
+        profile = data["profiles"].get(source["embedding_profile"])
+        if profile is None:
+            raise ValueError(f"Embedding profile does not exist: {source['embedding_profile']}")
+        if profile.get("scope") == "project" and profile.get("project_id") != project["project_id"]:
+            raise ValueError("Embedding profile belongs to another project")
+        self.resolved_config(project, source)
         data["projects"][key] = project
         self.save(data)
         return project
