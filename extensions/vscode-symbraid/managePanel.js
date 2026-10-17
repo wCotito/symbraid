@@ -62,10 +62,16 @@ class ManagePanel {
         return;
       } else if (message.command === 'applyProject') {
         const impact = message.payload.impact || 'configuration-only';
-        const warning = this.locale === 'ru'
+        const warning = impact === 'register'
+          ? (this.locale === 'ru'
+            ? 'Зарегистрировать проект с выбранными настройками и запустить Symbraid?'
+            : 'Register this project with the selected settings and start Symbraid?')
+          : this.locale === 'ru'
           ? `Применить изменения (${impact})? Предыдущий source будет сохранён.`
           : `Apply changes (${impact})? The previous source will be retained.`;
-        const apply = this.locale === 'ru' ? 'Применить' : 'Apply';
+        const apply = impact === 'register'
+          ? (this.locale === 'ru' ? 'Зарегистрировать и запустить' : 'Register and start')
+          : this.locale === 'ru' ? 'Применить' : 'Apply';
         if (await vscode.window.showWarningMessage(warning, { modal: true }, apply) !== apply) return;
         result = await this.applyProject(this.folder, message.payload);
       } else if (message.command === 'saveProfile') {
@@ -116,7 +122,7 @@ class ManagePanel {
           <fieldset data-backend="lancedb"><legend>LanceDB</legend><label><span data-i18n="lanceRoot"></span><div class="path"><input name="lancedb_root"><button type="button" data-pick="lancedb_root" data-kind="folder">…</button></div></label></fieldset>
           <fieldset data-backend="qdrant"><legend>Qdrant</legend><div class="grid"><label><span>URL</span><input name="qdrant_url"></label><label><span data-i18n="apiKey"></span><input name="qdrant_api_key" type="password" autocomplete="new-password" placeholder="••••••"></label></div></fieldset>
           <details><summary data-i18n="advanced"></summary><div class="grid advanced-fields"></div></details>
-          <div class="actions"><button type="button" id="resetProject" class="secondary" data-i18n="resetProject"></button><button type="submit" data-i18n="planChanges"></button></div></form><article id="planBox" class="hidden"><h3 data-i18n="changePlan"></h3><pre id="planResult"></pre><button id="applyPlan" data-i18n="apply"></button></article></section>
+          <div class="actions"><button type="button" id="resetProject" class="secondary" data-i18n="resetProject"></button><button type="submit" id="planProject" data-i18n="planChanges"></button></div></form><article id="planBox" class="hidden"><h3 data-i18n="changePlan"></h3><pre id="planResult"></pre><button id="applyPlan" data-i18n="apply"></button></article></section>
         <section id="tab-profiles" class="tab hidden"><div class="split"><div><h2 data-i18n="profiles"></h2><select id="profileList" size="10"></select><div class="actions"><button id="newProfile" data-i18n="newProfile"></button><button id="copyProfile" class="secondary" data-i18n="copyProfile"></button></div></div>
           <form id="profileForm"><label><span>ID</span><input name="profile_id" required></label><label><span data-i18n="displayName"></span><input name="display_name" required></label><div class="grid"><label><span data-i18n="scope"></span><select name="scope"><option value="global" data-i18n="global"></option><option value="project" data-i18n="project"></option></select></label><label><span data-i18n="provider"></span><select name="provider"><option value="fastembed">FastEmbed</option><option value="openai-compatible">OpenAI-compatible</option></select></label></div>
           <label><span data-i18n="model"></span><input name="model" required></label><label><span data-i18n="dimension"></span><input name="dimension" type="number" min="1" required></label><label><span data-i18n="baseUrl"></span><input name="base_url"></label><label><span data-i18n="apiKey"></span><input name="api_key" type="password" autocomplete="new-password" placeholder="••••••"></label>

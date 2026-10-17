@@ -30,11 +30,11 @@
     },
     {
       "path": "docs/en/cli.md",
-      "source_sha256": "75a2da7837dd146b160d733c8a4038fc135cb2c8496df517b97ea595552f6fb5",
+      "source_sha256": "32b1fc30bbe095873e3498ed3d8393edfab00e34c9fcab92313167f9f1177f98",
       "translations": {
         "ru": {
           "path": "docs/ru/cli.md",
-          "sha256": "dfd9ffbffddaa9c925d853f7da8bc3c2c1c5d5d329480592a159940bc3e7e66e",
+          "sha256": "05706454f44d346d5b1f946656f69e25e08b4a7082d226222d6f152bb05e27ed",
           "status": "current"
         }
       }
@@ -96,11 +96,11 @@
     },
     {
       "path": "docs/en/integrations/vscode.md",
-      "source_sha256": "7bfac43ba49f5e30a43eeb60f7432767988cf58c8ddaa77ca35209e55895d399",
+      "source_sha256": "345b4aa63a890c3ac5c8273e84dce467d9f85030e5c3fcaa624f5e58e2884fd8",
       "translations": {
         "ru": {
           "path": "docs/ru/integrations/vscode.md",
-          "sha256": "c28e46738236f094d95728b5230bf97a10956fc96e9682efd84bc0307ea9467c",
+          "sha256": "6ebdfebd1bf606d979551a729e51394830fdffaaffa89ee802be145a03c8e372",
           "status": "current"
         }
       }

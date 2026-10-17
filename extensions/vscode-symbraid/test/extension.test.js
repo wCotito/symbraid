@@ -213,6 +213,80 @@ function stubbornChild(forceDelayMs) {
   assert.strictEqual(restartedAfterDisable, false, 'an explicit disable must win over an in-flight probe');
   assert.strictEqual(disabledController.states.get(key).autoWatch, false);
 
+  const newController = Object.create(Controller.prototype);
+  newController.api = { workspace: { workspaceFolders: [folder] } };
+  newController.states = new Map();
+  const newProjectCalls = [];
+  let registered = false;
+  newController.runCli = async (args) => {
+    newProjectCalls.push(args);
+    if (args[0] === 'project' && args[1] === 'register') {
+      registered = true;
+      return { status: 'ok' };
+    }
+    if (args[0] === 'project' && args[1] === 'autowatch') {
+      assert.strictEqual(registered, true, 'explicit enable must register before saving the preference');
+    }
+    return { status: 'ok', project: { registered, auto_watch: false } };
+  };
+  newController.updateStatus = async () => {};
+  newController.showWatchError = async (message) => { assert.fail(message); };
+  newController.startWatch = async () => { assert.fail('opening a workspace must not start a watcher'); };
+  await newController.start();
+  assert.strictEqual(newController.states.get(key).mode, 'stopped');
+  assert.deepStrictEqual(newProjectCalls, [
+    ['settings', 'show', '--project', temp],
+  ]);
+  assert.strictEqual(registered, false, 'opening a workspace must not register it');
+  registered = false;
+  newProjectCalls.length = 0;
+  await newController.setAutoWatch(folder, true);
+  assert.deepStrictEqual(newProjectCalls, [
+    ['project', 'register', temp],
+    ['project', 'autowatch', temp, 'on'],
+  ]);
+  assert.strictEqual(newController.states.get(key).autoWatch, true);
+  newProjectCalls.length = 0;
+  await newController.setAutoWatch(folder, false);
+  assert.deepStrictEqual(newProjectCalls, [['project', 'autowatch', temp, 'off']]);
+
+  const enabledController = Object.create(Controller.prototype);
+  enabledController.api = { workspace: { workspaceFolders: [folder] } };
+  enabledController.states = new Map();
+  enabledController.runCli = async (args) => {
+    assert.deepStrictEqual(args, ['settings', 'show', '--project', temp]);
+    return { project: { registered: true, auto_watch: true } };
+  };
+  enabledController.updateStatus = async () => {};
+  enabledController.showWatchError = async (message) => { assert.fail(message); };
+  let resumed = false;
+  enabledController.startWatch = async (selected, persist) => {
+    assert.strictEqual(selected, folder);
+    assert.strictEqual(persist, false);
+    resumed = true;
+  };
+  await enabledController.start();
+  assert.strictEqual(resumed, true, 'an already enabled project must resume auto-watch');
+
+  const manageController = Object.create(Controller.prototype);
+  manageController.processes = new Map();
+  manageController.states = new Map();
+  const manageCalls = [];
+  manageController.runCli = async (args, cwd, stdin) => {
+    assert.strictEqual(cwd, temp);
+    manageCalls.push(args);
+    assert.strictEqual(JSON.parse(stdin).embedding_profile, 'selected');
+    return { status: 'ok', impact: 'register' };
+  };
+  manageController.setAutoWatch = async (_folder, enabled) => { assert.strictEqual(enabled, true); };
+  manageController.startWatch = async (_folder, persist) => {
+    assert.strictEqual(persist, false);
+    assert.deepStrictEqual(manageCalls, [['settings', 'apply-project', temp]]);
+  };
+  await manageController.applyProjectSettings(folder, {
+    auto_watch: true, embedding_profile: 'selected', impact: 'register', plan_hash: 'reviewed',
+  });
+
   const startupController = Object.create(Controller.prototype);
   startupController.api = { workspace: { workspaceFolders: [folder] } };
   startupController.states = new Map();

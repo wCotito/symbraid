@@ -9,14 +9,23 @@ async function loadManageState(runCli, cwd) {
   try {
     state = await runCli(['settings', 'show', '--project', cwd], cwd);
   } catch (error) {
+    let globalState = {};
+    try {
+      globalState = await runCli(['settings', 'show'], cwd);
+    } catch (_) {
+      // Keep the original project error if global settings are also unavailable.
+    }
     return {
+      ...globalState,
       status: 'error',
+      profiles: Object.fromEntries(Object.entries(globalState.profiles || {})
+        .filter(([, profile]) => profile.scope !== 'project')),
       project: { path: cwd, index_status: errorPayload(error) },
     };
   }
   const project = state && typeof state.project === 'object' ? state.project : undefined;
   const indexStatus = project?.index_status;
-  if (project && (!indexStatus || (typeof indexStatus === 'object' && !Object.keys(indexStatus).length))) {
+  if (project && project.registered !== false && (!indexStatus || (typeof indexStatus === 'object' && !Object.keys(indexStatus).length))) {
     try {
       project.index_status = await runCli(['status', cwd], cwd);
     } catch (error) {
