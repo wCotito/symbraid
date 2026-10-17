@@ -19,6 +19,9 @@ release has been published.
   credential reference.
 - Global defaults reject project-scoped embedding profiles, and new project
   registration validates profile ownership before saving its configuration.
+- New LanceDB sources use compact directories with the full source UUID. Windows
+  registration rejects oversized storage paths before saving or opening a store,
+  reserving room for Lance transaction and data files; existing locations stay intact.
 
 ## [0.4.0] - 2026-09-22
 

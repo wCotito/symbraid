@@ -216,7 +216,10 @@ class SymbraidService:
             project = self.registry.project(project_path)
             registering = False
         except KeyError:
-            project = self.registry.prepare_project(project_path)
+            # A valid project override can replace an overlong global root.
+            project = self.registry.prepare_project(
+                project_path, {key: value for key, value in payload.items() if value is not None},
+            )
             registering = True
         source = project["sources"][project["active_source_id"]]
         desired = self._desired(project, payload)
@@ -334,9 +337,9 @@ class SymbraidService:
                 self.registry.update_project(project_path, updated)
             return {"status": "ok", "impact": plan["impact"], "active_source_id": source["id"]}
 
-        source_id = f"managed-{desired['backend']}-{uuid.uuid4().hex[:8]}"
+        source_id = f"managed-{desired['backend']}-{uuid.uuid4().hex}"
         target = self.registry._managed_source(
-            self.registry.load(), Path(project["path"]), project["project_id"],
+            self.registry.load(), project["project_id"],
             desired["backend"], source_id=source_id, settings=desired,
         )
         self._config(updated, target, resolve_secrets=False)

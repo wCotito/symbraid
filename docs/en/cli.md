@@ -22,6 +22,14 @@ symbraid source use /absolute/project <source-id-from-list>
 `project remove` removes only registry metadata by default. Physical managed
 indexes are retained. There is exactly one active managed source for a project.
 
+New LanceDB sources use `<lancedb_root>/<full-source-uuid>` without the project
+directory name. Existing source locations are preserved. On Windows, the resolved
+managed directory is limited to 160 UTF-16 code units, leaving room for Lance's
+internal data, transaction, and temporary files. An oversized `lancedb_root` is
+rejected during registration planning and before registration is saved, without
+opening a store. Choose a shorter global root or override it for the project in
+Manage; the full UUID still keeps registrations and retained indexes separate.
+
 ## Settings and profiles
 
 ```text

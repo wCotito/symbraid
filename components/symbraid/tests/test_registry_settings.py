@@ -7,6 +7,7 @@ import tempfile
 import sys
 import types
 import unittest
+import uuid
 from argparse import Namespace
 from pathlib import Path
 from unittest import mock
@@ -48,6 +49,43 @@ def fake_keyring(initial=None):
 
 
 class RegistryTests(unittest.TestCase):
+    def test_lancedb_directory_is_bounded_and_keeps_the_full_source_uuid(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_root = root / ("p" * 180)
+            project_root.mkdir()
+            registry = Registry(root / "config.json")
+            data = default_registry()
+            data["defaults"]["lancedb_root"] = str(root / "indexes")
+            registry.save(data)
+            identities = [uuid.UUID("0" * 31 + end) for end in ("1", "2")]
+            with mock.patch("symbraid.registry.uuid.uuid4", side_effect=identities):
+                projects = [registry.prepare_project(str(project_root)) for _ in identities]
+            directories = []
+            for project in projects:
+                source = project["sources"][project["active_source_id"]]
+                location = Path(source["location"]["directory"])
+                self.assertEqual(location.parent, root / "indexes")
+                self.assertEqual(len(location.name), 32)
+                self.assertEqual(location.name, source["id"].rsplit("-", 1)[-1])
+                directories.append(str(location).casefold())
+            self.assertNotEqual(directories[0], directories[1], "the final UUID nibble must stay distinct")
+            self.assertFalse((root / "indexes").exists())
+
+    def test_saved_legacy_lancedb_location_is_not_rewritten(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            registry = Registry(root / "config.json")
+            project = registry.register_project(str(root))
+            source = project["sources"][project["active_source_id"]]
+            legacy_directory = root / f"repo-{project['project_id']}"
+            source["location"]["directory"] = str(legacy_directory)
+            registry.update_project(str(root), project)
+            before = registry.path.read_bytes()
+            self.assertEqual(registry.register_project(str(root)), project)
+            self.assertEqual(registry.resolved_config(project, source).lancedb_path, legacy_directory)
+            self.assertEqual(registry.path.read_bytes(), before)
+
     def test_registration_inherits_global_storage_and_embedding_defaults(self):
         for backend in ("lancedb", "qdrant"):
             with self.subTest(backend=backend), tempfile.TemporaryDirectory() as directory:
@@ -193,6 +231,42 @@ class ProjectRegistrationTests(unittest.TestCase):
         self.project_root.mkdir()
         self.registry = Registry(self.home / "config" / "config.json")
         self.service = SymbraidService(self.registry)
+
+    @unittest.skipUnless(os.name == "nt", "Windows LanceDB path budget")
+    def test_long_lancedb_root_is_rejected_before_registration_or_store_access(self):
+        for unicode_part in ("", "\U0001f680" * 8):
+            with self.subTest(unicode_part=bool(unicode_part)):
+                prefix = self.root / ("indexes-" + unicode_part)
+                units = len(str(prefix.resolve()).encode("utf-16-le")) // 2
+                storage_root = Path(str(prefix) + "d" * (161 - units - 33))
+                payload = {"lancedb_root": str(storage_root)}
+                with mock.patch.object(self.service, "_store") as store, mock.patch(
+                    "symbraid.service.get_secret"
+                ) as secret:
+                    with self.assertRaisesRegex(ValueError, "shorter lancedb_root"):
+                        self.service.plan_settings(str(self.project_root), payload)
+                    with self.assertRaisesRegex(ValueError, "shorter lancedb_root"):
+                        self.registry.register_project(str(self.project_root), payload)
+                store.assert_not_called()
+                secret.assert_not_called()
+                self.assertFalse(self.home.exists())
+                self.assertFalse(storage_root.exists())
+
+    @unittest.skipUnless(os.name == "nt", "Windows LanceDB path budget")
+    def test_shorter_storage_root_can_override_an_overlong_global_lancedb_root(self):
+        data = default_registry()
+        data["defaults"]["lancedb_root"] = str(self.root / ("d" * 150))
+        self.registry.save(data)
+        payload = {"lancedb_root": str(self.root / "indexes")}
+        plan = self.service.plan_settings(str(self.project_root), payload)
+        result = self.service.apply_project_settings(
+            str(self.project_root), {**payload, "plan_hash": plan["plan_hash"]}
+        )
+        project, source = self.registry.active_source(str(self.project_root))
+        self.assertEqual(result["impact"], "register")
+        self.assertEqual(Path(source["location"]["directory"]).parent, Path(payload["lancedb_root"]))
+        self.assertEqual(len(project["sources"]), 1)
+        self.assertFalse(Path(data["defaults"]["lancedb_root"]).exists())
 
     def test_preview_and_plan_do_not_register_or_open_a_store(self):
         with mock.patch.object(self.service, "_store") as store, mock.patch(
