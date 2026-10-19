@@ -22,6 +22,9 @@ release has been published.
 - New LanceDB sources use compact directories with the full source UUID. Windows
   registration rejects oversized storage paths before saving or opening a store,
   reserving room for Lance transaction and data files; existing locations stay intact.
+- Manage previews global settings even when their LanceDB root cannot be used,
+  allowing a shorter project root without losing model or numeric settings.
+  Equivalent LanceDB roots, including `~`, do not cause unnecessary index transfers.
 
 ## [0.4.0] - 2026-09-22
 

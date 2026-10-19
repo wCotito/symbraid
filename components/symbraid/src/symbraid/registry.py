@@ -109,21 +109,28 @@ class Registry:
             if os.path.exists(temporary):
                 os.unlink(temporary)
 
+    def preview_project(self, project_path: str) -> Dict[str, Any]:
+        """Describe an unregistered project without preparing or validating storage."""
+        root = Path(project_path).expanduser().resolve()
+        if not root.is_dir():
+            raise ValueError(f"Project directory does not exist: {root}")
+        return {
+            "path": str(root), "project_id": project_id(str(root)), "auto_watch": False,
+            "active_source_id": None, "overrides": {}, "sources": {},
+        }
+
     def prepare_project(
         self, project_path: str, overrides: Optional[Dict[str, Any]] = None, auto_watch: bool = False,
     ) -> Dict[str, Any]:
         """Build a new project's configuration without persisting or opening a store."""
-        root = Path(project_path).expanduser().resolve()
-        if not root.is_dir():
-            raise ValueError(f"Project directory does not exist: {root}")
+        project = self.preview_project(project_path)
         data = self.load()
         overrides = {key: value for key, value in (overrides or {}).items() if key in PROJECT_OVERRIDE_KEYS}
         settings = {**data["defaults"], **overrides}
-        identifier = project_id(str(root))
         source_id = f"managed-{settings['backend']}-{uuid.uuid4().hex}"
-        source = self._managed_source(data, identifier, settings["backend"], source_id=source_id, settings=settings)
+        source = self._managed_source(data, project["project_id"], settings["backend"], source_id=source_id, settings=settings)
         return {
-            "path": str(root), "project_id": identifier, "auto_watch": bool(auto_watch),
+            **project, "auto_watch": bool(auto_watch),
             "active_source_id": source["id"], "overrides": overrides, "sources": {source["id"]: source},
         }
 

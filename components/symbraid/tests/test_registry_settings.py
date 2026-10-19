@@ -288,6 +288,62 @@ class ProjectRegistrationTests(unittest.TestCase):
         secret.assert_not_called()
         watcher.assert_not_called()
 
+    def test_preview_does_not_prepare_or_validate_an_unusable_source(self):
+        data = default_registry()
+        data["defaults"].update({
+            "lancedb_root": str(self.root / ("d" * 150)),
+            "max_file_bytes": 2097152, "chunk_chars": 2400,
+            "chunk_overlap_chars": 120, "batch_size": 7,
+        })
+        self.registry.save(data)
+        before = self.registry.path.read_bytes()
+        with mock.patch.object(
+            self.registry, "_managed_source", side_effect=ValueError("unusable storage")
+        ) as source, mock.patch.object(self.service, "_store") as store, mock.patch(
+            "symbraid.service.get_secret"
+        ) as secret, mock.patch("symbraid.service.watcher_status") as watcher:
+            state = self.service.settings_state(str(self.project_root))
+        self.assertEqual(state["status"], "ok")
+        self.assertIs(state["project"]["registered"], False)
+        self.assertEqual(state["project"]["effective"], state["defaults"])
+        self.assertEqual(state["project"]["project_id"], project_id(str(self.project_root)))
+        self.assertIsNone(state["project"]["active_source"])
+        self.assertEqual(state["project"]["sources"], [])
+        self.assertIn("default-code", state["profiles"])
+        self.assertEqual(self.registry.path.read_bytes(), before)
+        self.assertFalse(Path(data["defaults"]["lancedb_root"]).exists())
+        for call in (source, store, secret, watcher):
+            call.assert_not_called()
+
+    def test_tilde_root_empty_and_autowatch_plans_do_not_transfer(self):
+        with mock.patch.dict(os.environ, {"HOME": str(self.root), "USERPROFILE": str(self.root)}):
+            data = default_registry()
+            data["defaults"]["lancedb_root"] = "~/indexes"
+            self.registry.save(data)
+            project = self.registry.register_project(str(self.project_root))
+            original_source = project["active_source_id"]
+            for payload in ({}, {"auto_watch": True}, {"lancedb_root": "~/indexes/.", "auto_watch": False}):
+                with self.subTest(payload=payload):
+                    with mock.patch.object(self.service, "_transfer") as transfer, mock.patch.object(
+                        self.service, "_store"
+                    ) as store:
+                        plan = self.service.plan_settings(str(self.project_root), payload)
+                        self.assertEqual(plan["impact"], "configuration-only")
+                        self.assertEqual(plan["connection_changes"], [])
+                        result = self.service.apply_project_settings(
+                            str(self.project_root), {**payload, "plan_hash": plan["plan_hash"]}
+                        )
+                    transfer.assert_not_called()
+                    store.assert_not_called()
+                    current = self.registry.project(str(self.project_root))
+                    self.assertEqual(result["active_source_id"], original_source)
+                    self.assertEqual(len(current["sources"]), 1)
+                    self.assertEqual(current["auto_watch"], bool(payload.get("auto_watch", False)))
+            self.assertFalse((self.root / "indexes").exists())
+            moved = self.service.plan_settings(str(self.project_root), {"lancedb_root": "~/other-indexes"})
+            self.assertEqual(moved["impact"], "transfer")
+            self.assertEqual(moved["connection_changes"], ["lancedb_root"])
+
     def test_confirming_global_settings_registers_one_source(self):
         payload = {**self.service.settings_state()["defaults"], "auto_watch": True}
         plan = self.service.plan_settings(str(self.project_root), payload)

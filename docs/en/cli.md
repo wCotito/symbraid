@@ -51,6 +51,11 @@ only `settings apply-project` with its matching hash creates the initial
 managed source. The registration payload can keep global defaults or override
 storage and embedding settings; `auto_watch=true` saves the enabled preference.
 
+The preview does not prepare a source or validate its storage location. Global
+values remain visible even if their LanceDB root is too long; change the project
+root in Manage, then plan and confirm registration. Plan/apply still validate the
+selected location before saving the project or opening a store.
+
 ## Indexing and search
 
 ```text
@@ -76,6 +81,10 @@ symbraid migrate-backend /absolute/project lancedb
 Migration copies vectors without recomputing embeddings. The core validates
 schema, provider, model, dimension, and count before switching the active source;
 the prior source remains a rollback option.
+
+LanceDB root comparisons expand `~` and normalize paths on both sides. Equivalent
+spellings of the same root do not trigger a transfer for an empty plan or a
+change to auto-watch alone.
 
 ## MCP
 

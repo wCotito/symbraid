@@ -150,7 +150,7 @@ class SymbraidService:
             project = data["projects"].get(normalize_project_path(project_path))
             registered = project is not None
             if not registered:
-                project = self.registry.prepare_project(project_path)
+                project = self.registry.preview_project(project_path)
                 source = None
             else:
                 project, source = self.registry.active_source(project_path)
@@ -236,7 +236,9 @@ class SymbraidService:
             connection.append("backend")
         elif desired["backend"] == "qdrant" and location.get("url") != desired["qdrant_url"]:
             connection.append("qdrant_url")
-        elif desired["backend"] == "lancedb" and Path(current_root) != Path(desired["lancedb_root"]):
+        elif desired["backend"] == "lancedb" and (
+            Path(current_root).expanduser().resolve() != Path(desired["lancedb_root"]).expanduser().resolve()
+        ):
             connection.append("lancedb_root")
         impact = "reindex" if structural else "transfer" if connection else "configuration-only"
         if registering:

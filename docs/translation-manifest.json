@@ -30,11 +30,11 @@
     },
     {
       "path": "docs/en/cli.md",
-      "source_sha256": "32b1fc30bbe095873e3498ed3d8393edfab00e34c9fcab92313167f9f1177f98",
+      "source_sha256": "0b60157dbe86e2f71b6c6701559a474bd506809a85ce28e3c1d095965f98c6a0",
       "translations": {
         "ru": {
           "path": "docs/ru/cli.md",
-          "sha256": "05706454f44d346d5b1f946656f69e25e08b4a7082d226222d6f152bb05e27ed",
+          "sha256": "cad1ea94a4c23a4ebb32965cd8ac66f763f4169dfe52e1c8ab08b3fd1ad799ff",
           "status": "current"
         }
       }
@@ -140,11 +140,11 @@
     },
     {
       "path": "docs/en/project/contributing.md",
-      "source_sha256": "b786cf6b0b2f7f5962f43ab0ec977f005a1dcbdfec630515b5630cd17fa5c88b",
+      "source_sha256": "b17b200fab58c227861ceb3aa1c74869bdc7ac8b6a96c3800cd974df6975161f",
       "translations": {
         "ru": {
           "path": "docs/ru/project/contributing.md",
-          "sha256": "f24f46e9f53950c1b5baacedcdf1a909c3811b6f84ae9e27cfc02c5ba03e74f3",
+          "sha256": "b7917bb207353798ab12d481aa947102c319b64fd52824045ca5a8e5738efb26",
           "status": "current"
         }
       }
