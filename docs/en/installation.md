@@ -6,7 +6,8 @@
 - Linux glibc x86_64 (the native release baseline);
 - Python 3.10 or newer;
 - `ripgrep` (`rg`); and
-- Node.js/VS Code and Codex CLI only when their optional integrations are used.
+- Node.js 22.12.0 or newer to build the optional VS Code extension;
+- VS Code and Codex CLI only when their optional integrations are used.
 
 LanceDB works locally. Qdrant is optional and is used only when a managed or
 remote backend is deliberately configured. The core does not require Docker.
@@ -30,6 +31,10 @@ The installer keeps runtime data outside the checkout and does not publish
 packages. Use `-SkipExtension` or `-SkipCodexPlugin` when those integrations
 are not needed. Never copy credentials into command-line arguments or a config
 file.
+
+The installer checks the Node.js minimum before building the extension. Core-only
+installation with `-SkipExtension` (PowerShell) or `--skip-extension` (Bash) does
+not require Node.js. The extension still supports VS Code 1.90 or newer.
 
 ## First project
 

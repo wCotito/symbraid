@@ -67,6 +67,8 @@ if [[ "$skip_extension" -eq 0 ]]; then
     code_bin="$(command -v code || command -v code.cmd || true)"
     [[ -n "$npm_bin" && -n "$npx_bin" && -n "$node_bin" && -n "$code_bin" ]] ||
         die 'npm, npx, node, and code are required for extension installation; use --skip-extension to omit it.'
+    "$node_bin" -e 'const [major, minor] = process.versions.node.split(/[.]/).map(Number); if (major < 22 || (major === 22 && minor < 12)) process.exit(1)' ||
+        die 'Node.js 22.12.0 or newer is required to build the extension; use --skip-extension to omit it.'
     [[ -f "$extension_root/package.json" ]] || die "Symbraid VS Code extension was not found: $extension_root"
     extension_version="$(
         cd -- "$extension_root"

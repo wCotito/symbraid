@@ -6,7 +6,8 @@
 - Linux glibc x86_64 (native release baseline);
 - Python 3.10+;
 - ripgrep (rg);
-- Node.js/VS Code и Codex CLI только для нужных интеграций.
+- Node.js 22.12.0+ для сборки опционального расширения VS Code;
+- VS Code и Codex CLI только для нужных интеграций.
 
 LanceDB работает локально. Qdrant опционален и включается только явно. Docker
 для core не требуется.
@@ -29,6 +30,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-windows.ps1
 Runtime хранится вне checkout; пакеты не публикуются. Если интеграции не нужны,
 используйте SkipExtension или SkipCodexPlugin. Credentials нельзя передавать в
 аргументах или сохранять в config.
+
+Установщик проверяет минимальную версию Node.js перед сборкой расширения.
+Установка только core с `-SkipExtension` (PowerShell) или `--skip-extension`
+(Bash) не требует Node.js. Расширение по-прежнему поддерживает VS Code 1.90+.
 
 ## Первый проект
 

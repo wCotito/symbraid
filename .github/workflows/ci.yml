@@ -138,13 +138,19 @@ jobs:
         run: python -m unittest discover -s components/symbraid/tests -p "test_*.py"
 
   vscode:
-    name: VS Code extension checks
+    name: VS Code extension checks (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node:
+          - "22.12.0"
+          - "22"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: ${{ matrix.node }}
           cache: npm
           cache-dependency-path: extensions/vscode-symbraid/package-lock.json
       - uses: actions/setup-python@v7

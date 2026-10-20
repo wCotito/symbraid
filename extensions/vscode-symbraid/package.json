@@ -34,5 +34,5 @@
     "test:browser": "playwright test test/manage.browser.spec.js --reporter=line",
     "package": "vsce package --no-dependencies --baseContentUrl https://github.com/wCotito/symbraid/blob/main/extensions/vscode-symbraid"
   },
-  "devDependencies": { "@vscode/vsce": "^3.6.0", "@playwright/test": "^1.64.1" }
+  "devDependencies": { "@vscode/vsce": "^4.0.0", "@playwright/test": "^1.64.1" }
 }
