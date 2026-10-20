@@ -4,6 +4,7 @@ import hashlib
 import contextlib
 import io
 import json
+import os
 import subprocess
 import tempfile
 import unittest
@@ -21,6 +22,7 @@ from symbraid.indexer import SymbraidIndexer
 from symbraid.lancedb_store import LanceDBStore
 from symbraid.locking import ProjectLock
 from symbraid.qdrant import QdrantStore
+from symbraid.registry import Registry, default_registry, project_id
 
 
 def config(backend, location):
@@ -57,6 +59,53 @@ class LanceDBContractTests(unittest.TestCase, StoreContract):
     def test_contract(self):
         with tempfile.TemporaryDirectory() as directory:
             self.store = LanceDBStore(config("lancedb", directory)); self.exercise()
+
+    @unittest.skipUnless(os.name == "nt", "Windows LanceDB transaction path regression")
+    def test_registered_source_with_long_project_and_storage_paths(self):
+        for legacy_length in (158, 166, 174):
+            with self.subTest(legacy_length=legacy_length), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                project_root = root / ("project-" + "p" * 25)
+                project_root.mkdir()
+                legacy_name = f"{project_root.name}-{project_id(str(project_root))}"
+                padding = legacy_length - len(str(root)) - len(legacy_name) - 2
+                self.assertGreater(padding, 0)
+                storage_root = root / ("d" * padding)
+                legacy_directory = storage_root / legacy_name
+                self.assertEqual(len(str(legacy_directory)), legacy_length)
+                # Control: the pre-PR layout works with the same project/root.
+                self.store = LanceDBStore(config("lancedb", legacy_directory))
+                self.exercise()
+
+                registry = Registry(root / "config.json")
+                data = default_registry()
+                data["defaults"]["lancedb_root"] = str(storage_root)
+                data["profiles"]["default-code"]["dimension"] = 3
+                registry.save(data)
+                project = registry.register_project(str(project_root))
+                source = project["sources"][project["active_source_id"]]
+                self.assertEqual(Path(source["location"]["directory"]).parent, storage_root)
+                self.store = LanceDBStore(registry.resolved_config(project, source))
+                # Real table creation, vector/metadata writes, query, and deletes.
+                self.exercise()
+
+    @unittest.skipUnless(os.name == "nt", "Windows LanceDB path budget")
+    def test_registered_source_at_windows_path_budget(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            project_root = root / "repo"
+            project_root.mkdir()
+            storage_root = root / ("d" * (160 - len(str(root)) - 34))
+            registry = Registry(root / "config.json")
+            data = default_registry()
+            data["defaults"]["lancedb_root"] = str(storage_root)
+            data["profiles"]["default-code"]["dimension"] = 3
+            registry.save(data)
+            project = registry.register_project(str(project_root))
+            source = project["sources"][project["active_source_id"]]
+            self.assertEqual(len(source["location"]["directory"].encode("utf-16-le")) // 2, 160)
+            self.store = LanceDBStore(registry.resolved_config(project, source))
+            self.exercise()
 
 
 class QdrantContractTests(unittest.TestCase, StoreContract):

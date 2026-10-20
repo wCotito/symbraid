@@ -15,11 +15,20 @@ symbraid project register /absolute/project
 symbraid project list
 symbraid project autowatch /absolute/project on
 symbraid source list /absolute/project
-symbraid source use /absolute/project managed-lancedb
+symbraid source use /absolute/project <source-id-from-list>
 ~~~
 
 project remove по умолчанию удаляет только registry metadata; physical managed
 index сохраняется. У проекта ровно один active managed source.
+
+Новые sources LanceDB используют `<lancedb_root>/<полный-uuid-source>` без имени
+каталога проекта. Расположения существующих sources сохраняются. В Windows длина
+итогового абсолютного пути managed-каталога ограничена 160 кодовыми единицами
+UTF-16: оставлен запас для внутренних файлов данных, транзакций и временных файлов
+Lance. Слишком длинный `lancedb_root` отклоняется при планировании регистрации и
+до сохранения проекта, без открытия хранилища. Выберите более короткий глобальный
+root или переопределите его для проекта в Manage; полный UUID по-прежнему разделяет
+регистрации и сохранённые старые индексы.
 
 ## Settings и profiles
 
@@ -33,6 +42,20 @@ symbraid profile test local-code
 
 Payload settings и secret values принимаются через stdin. settings plan возвращает
 configuration-only, transfer или reindex; старый plan hash отклоняется.
+
+Для незарегистрированной директории `settings show --project` возвращает
+предварительные настройки без записи: `project.registered=false`, глобальные
+эффективные значения и отсутствие активного source. `settings plan` возвращает
+план `register`; только `settings apply-project` с совпадающим хешем создаёт
+первый managed source. В параметрах регистрации можно сохранить глобальные
+значения или переопределить хранилище и embedding; `auto_watch=true` сохраняет
+включённое автонаблюдение.
+
+Предпросмотр не подготавливает source и не проверяет расположение хранилища.
+Глобальные значения остаются видимыми даже при слишком длинном root LanceDB:
+выберите короткий путь хранилища проекта в Manage, затем сформируйте план и
+подтвердите регистрацию. Plan/apply по-прежнему проверяют выбранный путь до
+сохранения проекта или открытия хранилища.
 
 ## Indexing и search
 
@@ -57,6 +80,10 @@ symbraid migrate-backend /absolute/project lancedb
 
 Vectors копируются без пересчёта. Core проверяет schema/provider/model/dimension/
 count, затем переключает active source; прежний source сохраняется для rollback.
+
+При сравнении root LanceDB обе стороны раскрывают `~` и нормализуют путь.
+Эквивалентные записи одного каталога не вызывают перенос при пустом плане
+или изменении только auto-watch.
 
 ## MCP
 

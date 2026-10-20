@@ -14,7 +14,7 @@ from .lancedb_store import LanceDBStore
 from .qdrant import QdrantStore
 from .locking import watcher_status
 from .paths import app_paths
-from .registry import INDEX_RECIPE_KEYS, PROJECT_OVERRIDE_KEYS, Registry
+from .registry import INDEX_RECIPE_KEYS, PROJECT_OVERRIDE_KEYS, Registry, normalize_project_path
 from .secrets import SecretUpdate, get_secret
 
 
@@ -147,7 +147,13 @@ class SymbraidService:
             "profiles": {key: self._public_profile(value) for key, value in data["profiles"].items()},
         }
         if project_path:
-            project, source = self.registry.active_source(project_path)
+            project = data["projects"].get(normalize_project_path(project_path))
+            registered = project is not None
+            if not registered:
+                project = self.registry.preview_project(project_path)
+                source = None
+            else:
+                project, source = self.registry.active_source(project_path)
             result["profiles"] = {
                 key: self._public_profile(value)
                 for key, value in data["profiles"].items()
@@ -156,14 +162,18 @@ class SymbraidService:
             effective = self.registry.resolved_settings(project)
             result["project"] = {
                 "path": project["path"], "project_id": project["project_id"],
+                "registered": registered,
                 "auto_watch": bool(project.get("auto_watch")),
-                "watcher": watcher_status(app_paths().locks, project["project_id"]),
+                "watcher": watcher_status(app_paths().locks, project["project_id"]) if registered else {"running": False, "owner": None},
                 "overrides": self._public_settings(project.get("overrides") or {}),
                 "effective": self._public_settings(effective),
-                "active_source_id": project["active_source_id"],
-                "active_source": self._public_source(source),
-                "sources": [self._public_source(item) for item in project["sources"].values()],
+                "active_source_id": project["active_source_id"] if registered else None,
+                "active_source": self._public_source(source) if registered else None,
+                "sources": [self._public_source(item) for item in project["sources"].values()] if registered else [],
             }
+            if not registered:
+                result["project"]["index_status"] = {"status": "not_registered", "indexed": False}
+                return result
             try:
                 result["project"]["index_status"] = self.status(project_path)
             except Exception as exc:
@@ -184,6 +194,9 @@ class SymbraidService:
         data = self.registry.load()
         if desired["embedding_profile"] not in data["profiles"]:
             raise KeyError(f"Profile does not exist: {desired['embedding_profile']}")
+        profile = data["profiles"][desired["embedding_profile"]]
+        if profile.get("scope") == "project" and profile.get("project_id") != project["project_id"]:
+            raise ValueError("Embedding profile belongs to another project")
         if int(desired["debounce_ms"]) < 100:
             raise ValueError("debounce_ms must be at least 100")
         if int(desired["bulk_change_threshold"]) < 1 or int(desired["batch_size"]) < 1:
@@ -199,7 +212,16 @@ class SymbraidService:
         return desired
 
     def plan_settings(self, project_path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        project, source = self.registry.active_source(project_path)
+        try:
+            project = self.registry.project(project_path)
+            registering = False
+        except KeyError:
+            # A valid project override can replace an overlong global root.
+            project = self.registry.prepare_project(
+                project_path, {key: value for key, value in payload.items() if value is not None},
+            )
+            registering = True
+        source = project["sources"][project["active_source_id"]]
         desired = self._desired(project, payload)
         location = source.get("location") or {}
         current_root = str(Path(location.get("directory", ".")).parent) if source["backend"] == "lancedb" else ""
@@ -214,15 +236,29 @@ class SymbraidService:
             connection.append("backend")
         elif desired["backend"] == "qdrant" and location.get("url") != desired["qdrant_url"]:
             connection.append("qdrant_url")
-        elif desired["backend"] == "lancedb" and Path(current_root) != Path(desired["lancedb_root"]):
+        elif desired["backend"] == "lancedb" and (
+            Path(current_root).expanduser().resolve() != Path(desired["lancedb_root"]).expanduser().resolve()
+        ):
             connection.append("lancedb_root")
         impact = "reindex" if structural else "transfer" if connection else "configuration-only"
+        if registering:
+            impact = "register"
+            candidate = self.registry.prepare_project(project_path, desired)
+            self._config(candidate, candidate["sources"][candidate["active_source_id"]], resolve_secrets=False)
         normalized = {
             "project": project["path"], "desired": desired, "impact": impact,
             "structural_changes": structural, "connection_changes": connection,
             "replace_qdrant_key": bool(payload.get("_replace_qdrant_key", payload.get("qdrant_api_key"))),
             "clear_qdrant_key": bool(payload.get("clear_qdrant_api_key")),
         }
+        if registering:
+            normalized["auto_watch"] = bool(payload.get("auto_watch", False))
+            profile = self._profile(candidate["sources"][candidate["active_source_id"]])
+            identity = {key: profile.get(key, "") for key in ("provider", "model", "dimension", "base_url", "secret_ref")}
+            normalized["embedding"] = {key: value for key, value in identity.items() if key != "secret_ref"}
+            normalized["embedding_profile_fingerprint"] = hashlib.sha256(
+                json.dumps(identity, sort_keys=True, ensure_ascii=False).encode("utf-8")
+            ).hexdigest()
         digest = hashlib.sha256(json.dumps(normalized, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
         public = {**normalized, "desired": self._public_settings(desired)}
         return {"status": "ok", **public, "plan_hash": digest}
@@ -267,6 +303,20 @@ class SymbraidService:
         plan = self.plan_settings(project_path, payload)
         if payload.get("plan_hash") != plan["plan_hash"]:
             raise ValueError("Settings changed after planning; request a new plan")
+        if plan["impact"] == "register":
+            defaults = self.registry.load()["defaults"]
+            overrides = {
+                key: payload[key] for key in PROJECT_OVERRIDE_KEYS
+                if payload.get(key) is not None and payload[key] != defaults[key]
+            }
+            auto_watch = bool(payload.get("auto_watch", False))
+            project = self.registry.prepare_project(project_path, overrides, auto_watch)
+            source = project["sources"][project["active_source_id"]]
+            self._config(project, source, resolve_secrets=False)
+            transaction = secret_update if secret_update is not None else nullcontext()
+            with transaction:
+                registered = self.registry.register_project(project_path, overrides, auto_watch)
+            return {"status": "ok", "impact": "register", "active_source_id": registered["active_source_id"]}
         project, source = self.registry.active_source(project_path)
         desired = self._desired(project, payload)
         updated = copy.deepcopy(project)
@@ -289,9 +339,9 @@ class SymbraidService:
                 self.registry.update_project(project_path, updated)
             return {"status": "ok", "impact": plan["impact"], "active_source_id": source["id"]}
 
-        source_id = f"managed-{desired['backend']}-{uuid.uuid4().hex[:8]}"
+        source_id = f"managed-{desired['backend']}-{uuid.uuid4().hex}"
         target = self.registry._managed_source(
-            self.registry.load(), Path(project["path"]), project["project_id"],
+            self.registry.load(), project["project_id"],
             desired["backend"], source_id=source_id, settings=desired,
         )
         self._config(updated, target, resolve_secrets=False)

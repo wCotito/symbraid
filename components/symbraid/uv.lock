@@ -2179,7 +2179,7 @@ wheels = [
 
 [[package]]
 name = "symbraid"
-version = "0.4.0"
+version = "0.4.1"
 source = { editable = "." }
 dependencies = [
     { name = "fastembed" },
@@ -2203,7 +2203,7 @@ requires-dist = [
     { name = "fastembed", specifier = ">=0.7,<1" },
     { name = "jsonschema", marker = "extra == 'dev'", specifier = ">=4.23,<5" },
     { name = "keyring", specifier = ">=25,<26" },
-    { name = "lancedb", specifier = ">=0.37,<0.38" },
+    { name = "lancedb", specifier = ">=0.37,<0.41" },
     { name = "mcp", specifier = ">=1.13,<2" },
     { name = "tree-sitter-language-pack", specifier = ">=0.9,<1" },
     { name = "uvicorn", specifier = ">=0.30,<1" },

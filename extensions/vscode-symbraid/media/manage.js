@@ -13,6 +13,8 @@ const strings = {
     baseUrl: 'Base URL', testProfile: 'Test profile', saveProfile: 'Save profile', deleteProfile: 'Delete profile',
     newProfile: 'New', copyProfile: 'Project copy', use: 'Use', active: 'Active', local: 'local', inherited: 'global',
     resetProject: 'Reset to global', max_file_bytes: 'Max file bytes', chunk_chars: 'Chunk characters',
+    registerProject: 'Register and start',
+    newProjectHint: 'This project is not registered. Review the global settings below or change them, then register and start Symbraid.',
     chunk_overlap_chars: 'Chunk overlap', batch_size: 'Batch size', rg_path: 'rg executable',
   },
   ru: {
@@ -27,6 +29,8 @@ const strings = {
     baseUrl: 'Базовый URL', testProfile: 'Проверить профиль', saveProfile: 'Сохранить профиль', deleteProfile: 'Удалить профиль',
     newProfile: 'Новый', copyProfile: 'Копия для проекта', use: 'Использовать', active: 'Активен', local: 'локально', inherited: 'глобально',
     resetProject: 'Сбросить к глобальным', max_file_bytes: 'Максимальный размер файла', chunk_chars: 'Размер chunk в символах',
+    registerProject: 'Зарегистрировать и запустить',
+    newProjectHint: 'Проект не зарегистрирован. Подтвердите глобальные настройки ниже или измените их, затем зарегистрируйте и запустите Symbraid.',
     chunk_overlap_chars: 'Перекрытие chunks', batch_size: 'Размер batch', rg_path: 'Исполняемый файл rg',
   },
 };
@@ -134,6 +138,10 @@ function render() {
   setProfiles();
   fill(document.getElementById('globalForm'), state.defaults || {});
   fill(document.getElementById('projectForm'), { ...effective, auto_watch: project.auto_watch });
+  const registering = project.registered === false;
+  document.querySelector('[data-i18n="projectHint"]').textContent = registering ? t.newProjectHint : t.projectHint;
+  document.getElementById('planProject').textContent = registering ? t.registerProject : t.planChanges;
+  input(document.getElementById('projectForm'), 'auto_watch').closest('label').classList.toggle('hidden', registering);
   markOrigins();
   const source = project.active_source || {};
   const location = source.location || {};
@@ -215,10 +223,15 @@ document.addEventListener('click', (event) => {
 document.getElementById('reload').addEventListener('click', () => send('reload'));
 document.getElementById('globalForm').addEventListener('submit', (event) => { event.preventDefault(); send('saveDefaults', { payload: payload(event.target) }); });
 document.querySelector('[data-action="test-global"]').addEventListener('click', (event) => send('testBackend', { payload: payload(event.target.form) }));
-document.getElementById('projectForm').addEventListener('submit', (event) => { event.preventDefault(); send('planProject', { payload: payload(event.target) }); });
+document.getElementById('projectForm').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const values = payload(event.target);
+  if (state.project?.registered === false) values.auto_watch = true;
+  send('planProject', { payload: values });
+});
 document.getElementById('resetProject').addEventListener('click', () => {
   const form = document.getElementById('projectForm');
-  const autoWatch = Boolean(state.project?.auto_watch);
+  const autoWatch = state.project?.registered === false || Boolean(state.project?.auto_watch);
   fill(form, { ...(state.defaults || {}), auto_watch: autoWatch });
   send('planProject', { payload: { clear_overrides: ['backend', 'embedding_profile', 'qdrant_url', 'qdrant_secret_ref', 'lancedb_root', ...advanced], auto_watch: autoWatch } });
 });
@@ -232,6 +245,8 @@ document.getElementById('deleteProfile').addEventListener('click', () => send('d
 window.addEventListener('message', (event) => {
   const message = event.data;
   if (message.type === 'state') {
+    pendingPlan = undefined;
+    document.getElementById('planBox').classList.add('hidden');
     state = message.state;
     locale = message.locale || 'en';
     t = strings[locale] || strings.en;
@@ -242,6 +257,7 @@ window.addEventListener('message', (event) => {
     pendingPlan = { ...message.payload, plan_hash: message.plan.plan_hash, impact: message.plan.impact };
     document.getElementById('planResult').textContent = JSON.stringify(message.plan, null, 2);
     document.getElementById('planBox').classList.remove('hidden');
+    document.getElementById('applyPlan').textContent = message.plan.impact === 'register' ? t.registerProject : t.apply;
   } else if (message.type === 'path') {
     document.querySelectorAll(`[name="${message.target}"]`).forEach((element) => { element.value = message.value; });
   } else if (message.type === 'result') toast(message.result);

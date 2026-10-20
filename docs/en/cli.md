@@ -16,11 +16,19 @@ symbraid project register /absolute/project
 symbraid project list
 symbraid project autowatch /absolute/project on
 symbraid source list /absolute/project
-symbraid source use /absolute/project managed-lancedb
+symbraid source use /absolute/project <source-id-from-list>
 ```
 
 `project remove` removes only registry metadata by default. Physical managed
 indexes are retained. There is exactly one active managed source for a project.
+
+New LanceDB sources use `<lancedb_root>/<full-source-uuid>` without the project
+directory name. Existing source locations are preserved. On Windows, the resolved
+managed directory is limited to 160 UTF-16 code units, leaving room for Lance's
+internal data, transaction, and temporary files. An oversized `lancedb_root` is
+rejected during registration planning and before registration is saved, without
+opening a store. Choose a shorter global root or override it for the project in
+Manage; the full UUID still keeps registrations and retained indexes separate.
 
 ## Settings and profiles
 
@@ -35,6 +43,18 @@ symbraid profile test local-code
 Settings payloads and secret values are accepted through stdin. A settings plan
 classifies a change as `configuration-only`, `transfer`, or `reindex`; applying
 an old plan hash is rejected.
+
+For an unregistered directory, `settings show --project` returns a read-only
+preview with `project.registered=false`, global effective settings, and no
+active source. `settings plan` returns a `register` plan for that directory;
+only `settings apply-project` with its matching hash creates the initial
+managed source. The registration payload can keep global defaults or override
+storage and embedding settings; `auto_watch=true` saves the enabled preference.
+
+The preview does not prepare a source or validate its storage location. Global
+values remain visible even if their LanceDB root is too long; change the project
+root in Manage, then plan and confirm registration. Plan/apply still validate the
+selected location before saving the project or opening a store.
 
 ## Indexing and search
 
@@ -61,6 +81,10 @@ symbraid migrate-backend /absolute/project lancedb
 Migration copies vectors without recomputing embeddings. The core validates
 schema, provider, model, dimension, and count before switching the active source;
 the prior source remains a rollback option.
+
+LanceDB root comparisons expand `~` and normalize paths on both sides. Equivalent
+spellings of the same root do not trigger a transfer for an empty plan or a
+change to auto-watch alone.
 
 ## MCP
 

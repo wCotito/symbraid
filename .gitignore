@@ -10,6 +10,8 @@ __pycache__/
 # Node / VS Code
 node_modules/
 *.vsix
+test-results/
+playwright-report/
 
 # Local runtime and indexes
 .runtime/

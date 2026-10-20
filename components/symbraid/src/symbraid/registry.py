@@ -4,8 +4,8 @@ import copy
 import hashlib
 import json
 import os
-import re
 import tempfile
+import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -17,6 +17,9 @@ SCHEMA_VERSION = 4
 PREVIOUS_SCHEMA_VERSION = 3
 OLD_DEBOUNCE_DEFAULT_MS = 1500
 DEFAULT_DEBOUNCE_MS = 5000
+# Leave 100 UTF-16 code units under MAX_PATH for Lance table, data,
+# transaction (including a u64 version), and temporary file names.
+WINDOWS_LANCEDB_DIRECTORY_LIMIT = 160
 INDEX_RECIPE_KEYS = ("max_file_bytes", "chunk_chars", "chunk_overlap_chars", "rg_path")
 PROJECT_OVERRIDE_KEYS = (
     "backend", "embedding_profile", "qdrant_url", "qdrant_secret_ref", "lancedb_root",
@@ -32,11 +35,6 @@ def normalize_project_path(value: str) -> str:
 
 def project_id(value: str) -> str:
     return hashlib.sha256(normalize_project_path(value).encode("utf-8")).hexdigest()[:16]
-
-
-def safe_name(value: str) -> str:
-    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", value).strip("-.")
-    return cleaned or "project"
 
 
 def default_registry() -> Dict[str, Any]:
@@ -111,7 +109,34 @@ class Registry:
             if os.path.exists(temporary):
                 os.unlink(temporary)
 
-    def register_project(self, project_path: str) -> Dict[str, Any]:
+    def preview_project(self, project_path: str) -> Dict[str, Any]:
+        """Describe an unregistered project without preparing or validating storage."""
+        root = Path(project_path).expanduser().resolve()
+        if not root.is_dir():
+            raise ValueError(f"Project directory does not exist: {root}")
+        return {
+            "path": str(root), "project_id": project_id(str(root)), "auto_watch": False,
+            "active_source_id": None, "overrides": {}, "sources": {},
+        }
+
+    def prepare_project(
+        self, project_path: str, overrides: Optional[Dict[str, Any]] = None, auto_watch: bool = False,
+    ) -> Dict[str, Any]:
+        """Build a new project's configuration without persisting or opening a store."""
+        project = self.preview_project(project_path)
+        data = self.load()
+        overrides = {key: value for key, value in (overrides or {}).items() if key in PROJECT_OVERRIDE_KEYS}
+        settings = {**data["defaults"], **overrides}
+        source_id = f"managed-{settings['backend']}-{uuid.uuid4().hex}"
+        source = self._managed_source(data, project["project_id"], settings["backend"], source_id=source_id, settings=settings)
+        return {
+            **project, "auto_watch": bool(auto_watch),
+            "active_source_id": source["id"], "overrides": overrides, "sources": {source["id"]: source},
+        }
+
+    def register_project(
+        self, project_path: str, overrides: Optional[Dict[str, Any]] = None, auto_watch: bool = False,
+    ) -> Dict[str, Any]:
         root = Path(project_path).expanduser().resolve()
         if not root.is_dir():
             raise ValueError(f"Project directory does not exist: {root}")
@@ -119,31 +144,43 @@ class Registry:
         key = normalize_project_path(str(root))
         if key in data["projects"]:
             return data["projects"][key]
-        identifier = project_id(str(root))
-        source = self._managed_source(data, root, identifier, data["defaults"]["backend"])
-        project = {
-            "path": str(root), "project_id": identifier, "auto_watch": False,
-            "active_source_id": source["id"], "overrides": {}, "sources": {source["id"]: source},
-        }
+        project = self.prepare_project(project_path, overrides, auto_watch)
+        source = project["sources"][project["active_source_id"]]
+        profile = data["profiles"].get(source["embedding_profile"])
+        if profile is None:
+            raise ValueError(f"Embedding profile does not exist: {source['embedding_profile']}")
+        if profile.get("scope") == "project" and profile.get("project_id") != project["project_id"]:
+            raise ValueError("Embedding profile belongs to another project")
+        self.resolved_config(project, source)
         data["projects"][key] = project
         self.save(data)
         return project
 
     def _managed_source(
-        self, data: Dict[str, Any], root: Path, identifier: str, backend: str,
+        self, data: Dict[str, Any], identifier: str, backend: str,
         source_id: Optional[str] = None, settings: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         values = {**default_registry()["defaults"], **data.get("defaults", {}), **(settings or {})}
-        source_id = source_id or f"managed-{backend}"
-        suffix = "" if source_id == f"managed-{backend}" else f"-{source_id.rsplit('-', 1)[-1]}"
+        source_id = source_id or f"managed-{backend}-{uuid.uuid4().hex}"
+        token = source_id.rsplit("-", 1)[-1]
         if backend == "qdrant":
             location = {
                 "url": values["qdrant_url"],
-                "collection": f"symbraid-{identifier}{suffix}",
+                "collection": f"symbraid-{identifier}-{token}",
                 "secret_ref": values.get("qdrant_secret_ref", ""),
             }
         else:
-            directory = Path(values["lancedb_root"]) / f"{safe_name(root.name)}-{identifier}{suffix}"
+            # A full UUID preserves source isolation without repeating the
+            # potentially long project basename and project hash on disk.
+            directory = Path(values["lancedb_root"]).expanduser() / uuid.UUID(hex=token).hex
+            if os.name == "nt":
+                length = len(str(directory.resolve()).encode("utf-16-le")) // 2
+                if length > WINDOWS_LANCEDB_DIRECTORY_LIMIT:
+                    raise ValueError(
+                        f"Resolved LanceDB directory is too long for Windows "
+                        f"({length} > {WINDOWS_LANCEDB_DIRECTORY_LIMIT} UTF-16 code units); "
+                        "choose a shorter lancedb_root"
+                    )
             location = {"directory": str(directory)}
         return {
             "id": source_id,
