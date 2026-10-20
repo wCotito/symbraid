@@ -6,6 +6,8 @@ release has been published.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-20
+
 ### Fixed
 
 - New directories stay unregistered when opened in VS Code or viewed in Manage.
