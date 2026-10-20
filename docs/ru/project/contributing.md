@@ -9,7 +9,8 @@ read-only MCP surface.
 --check`. Не оставляйте flat legacy filename, если страница относится к
 integration, operations, project или review.
 
-Для браузерного регрессионного теста Manage нужен Python 3.10+ в `PATH`:
+Для сборки и тестов расширения нужны Node.js 22+ и Python 3.10+ в `PATH`.
+Запуск браузерного регрессионного теста Manage:
 
 ```sh
 cd extensions/vscode-symbraid
@@ -22,6 +23,16 @@ npm run test:browser
 preview/plan/apply core в изолированном временном каталоге без зависимостей БД
 и моделей и проверяет настоящую форму Manage на EN/RU. CI запускает эту проверку
 вместе с тестами расширения.
+
+Security workflow проверяет полный Python lock-файл, включая все платформенные
+варианты и extras, и все npm dev-зависимости. Он экспортирует `uv.lock` во
+временный `pylock.toml` для `pip-audit` с OSV; экспорт не является вторым
+поддерживаемым lock-файлом. Уязвимости и ошибки сервиса приводят к неуспеху
+задания. Запускайте `npm audit --package-lock-only` из каталога расширения;
+команды Python-аудита находятся в
+[security workflow](../../../.github/workflows/security.yml).
+Исходные номера алертов и требования совместимости приведены в
+[обновлении безопасности зависимостей](../reviews/dependency-security.md).
 
 См. [корневой CONTRIBUTING](../../../CONTRIBUTING.md) и [готовность релиза](../reviews/release-readiness.md).
 
