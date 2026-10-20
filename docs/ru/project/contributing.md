@@ -31,9 +31,9 @@ Security workflow проверяет полный Python lock-файл, вклю
 поддерживаемым lock-файлом. Уязвимости и ошибки сервиса приводят к неуспеху
 задания. Запускайте `npm audit --package-lock-only` из каталога расширения;
 команды Python-аудита находятся в
-[security workflow](../../../.github/workflows/security.yml).
+[security workflow](/.github/workflows/security.yml).
 Исходные номера алертов и требования совместимости приведены в
-[обновлении безопасности зависимостей](../reviews/dependency-security.md).
+[обновлении безопасности зависимостей](/docs/ru/reviews/dependency-security.md).
 
 См. [корневой CONTRIBUTING](../../../CONTRIBUTING.md) и [готовность релиза](../reviews/release-readiness.md).
 

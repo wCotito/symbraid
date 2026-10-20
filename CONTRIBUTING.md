@@ -31,8 +31,8 @@ It exports `uv.lock` to a temporary `pylock.toml` for `pip-audit` with OSV;
 the export is not a second maintained lockfile. Vulnerabilities and audit
 service errors fail the job. Run `npm audit --package-lock-only` from the
 extension directory, and use the commands in
-[the security workflow](../../../.github/workflows/security.yml) for Python.
-See the [dependency security update](../reviews/dependency-security.md) for
+[the security workflow](/.github/workflows/security.yml) for Python.
+See the [dependency security update](/docs/en/reviews/dependency-security.md) for
 the original alert inventory and compatibility requirements.
 
 See the repository [contribution guide](../../../CONTRIBUTING.md) for pull-request

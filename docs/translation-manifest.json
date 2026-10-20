@@ -140,11 +140,11 @@
     },
     {
       "path": "docs/en/project/contributing.md",
-      "source_sha256": "901787e26abd1fcb98fdf5b91cc4d4bf89858149ff274818682ca966e6fc1600",
+      "source_sha256": "dbbff306ee5a23f5bcf82228abe842a37985afc6df2f4eac2bbb0da9aa28a316",
       "translations": {
         "ru": {
           "path": "docs/ru/project/contributing.md",
-          "sha256": "edc4d3326b5a1afb03a874ce19e09b04e695c0a61348e18e34586c9c0f6335ed",
+          "sha256": "8fe1f2094c4fcd60686ae8275d49e408e7ba4cfa1f6ff23868c43d64223219d1",
           "status": "current"
         }
       }
