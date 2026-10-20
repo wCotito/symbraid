@@ -54,9 +54,9 @@ if (-not $SkipExtension) {
             throw "$command was not found. Install Node.js and VS Code or use -SkipExtension."
         }
     }
-    & node -e 'if (parseInt(process.versions.node, 10) < 22) process.exit(1)'
+    & node -e 'const [major, minor] = process.versions.node.split(/[.]/).map(Number); if (major < 22 || (major === 22 && minor < 12)) process.exit(1)'
     if ($LASTEXITCODE -ne 0) {
-        throw 'Node.js 22 or newer is required to build the extension; use -SkipExtension to omit it.'
+        throw 'Node.js 22.12.0 or newer is required to build the extension; use -SkipExtension to omit it.'
     }
     $packagePath = Join-Path $extensionRoot 'package.json'
     if (-not (Test-Path -LiteralPath $packagePath)) {

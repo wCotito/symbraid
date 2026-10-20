@@ -9,7 +9,7 @@ read-only MCP surface.
 --check`. Не оставляйте flat legacy filename, если страница относится к
 integration, operations, project или review.
 
-Для сборки и тестов расширения нужны Node.js 22+ и Python 3.10+ в `PATH`.
+Для сборки и тестов расширения нужны Node.js 22.12.0+ и Python 3.10+ в `PATH`.
 Запуск браузерного регрессионного теста Manage:
 
 ```sh
@@ -23,6 +23,7 @@ npm run test:browser
 preview/plan/apply core в изолированном временном каталоге без зависимостей БД
 и моделей и проверяет настоящую форму Manage на EN/RU. CI запускает эту проверку
 вместе с тестами расширения.
+Матрица CI расширения проверяет Node.js 22.12.0 и последнюю версию Node.js 22.
 
 Security workflow проверяет полный Python lock-файл, включая все платформенные
 варианты и extras, и все npm dev-зависимости. Он экспортирует `uv.lock` во

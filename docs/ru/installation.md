@@ -6,7 +6,7 @@
 - Linux glibc x86_64 (native release baseline);
 - Python 3.10+;
 - ripgrep (rg);
-- Node.js 22+ для сборки опционального расширения VS Code;
+- Node.js 22.12.0+ для сборки опционального расширения VS Code;
 - VS Code и Codex CLI только для нужных интеграций.
 
 LanceDB работает локально. Qdrant опционален и включается только явно. Docker

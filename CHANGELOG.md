@@ -11,7 +11,7 @@ release has been published.
 - Raise the published MCP, PyJWT, and urllib3 dependency floors and update both
   lockfiles to address the 32 open Dependabot alerts recorded on 2026-10-20.
   Replace the VSIX build dependency tree with vsce 4; building the optional
-  extension now requires Node.js 22 or newer. The VS Code runtime minimum is unchanged.
+  extension now requires Node.js 22.12.0 or newer. The VS Code runtime minimum is unchanged.
 - Audit the complete Python lockfile across platform variants and extras, and
   all npm development dependencies, on every security workflow run.
 

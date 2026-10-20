@@ -6,7 +6,7 @@
 - Linux glibc x86_64 (the native release baseline);
 - Python 3.10 or newer;
 - `ripgrep` (`rg`); and
-- Node.js 22 or newer to build the optional VS Code extension;
+- Node.js 22.12.0 or newer to build the optional VS Code extension;
 - VS Code and Codex CLI only when their optional integrations are used.
 
 LanceDB works locally. Qdrant is optional and is used only when a managed or

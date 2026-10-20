@@ -63,11 +63,11 @@
     },
     {
       "path": "docs/en/installation.md",
-      "source_sha256": "cc83953ffc991a465a8d4b6943254a820f1a10c1a8673d69d14305634d727702",
+      "source_sha256": "cf22e6980a0e07989d681692ae8450c5c708ea09aadfe55ca5bd7f32389a361b",
       "translations": {
         "ru": {
           "path": "docs/ru/installation.md",
-          "sha256": "077d47a271e9650829e3a87d4c1527d04594a606a245bb5dea86e80eef8d67d6",
+          "sha256": "6b55f6c12a32da84f3121ce755fa025a5d14b53221d56597145c77050c7275eb",
           "status": "current"
         }
       }
@@ -140,11 +140,11 @@
     },
     {
       "path": "docs/en/project/contributing.md",
-      "source_sha256": "c12a625074d9739b53cf1e4a7f0c1010c49290595865b19cac6388ccacc9b3c7",
+      "source_sha256": "901787e26abd1fcb98fdf5b91cc4d4bf89858149ff274818682ca966e6fc1600",
       "translations": {
         "ru": {
           "path": "docs/ru/project/contributing.md",
-          "sha256": "843241fd4d6fc89b68c6c49df41d4bd56786afd88323d2cb27f9f853c30b4802",
+          "sha256": "edc4d3326b5a1afb03a874ce19e09b04e695c0a61348e18e34586c9c0f6335ed",
           "status": "current"
         }
       }
@@ -184,11 +184,11 @@
     },
     {
       "path": "docs/en/reviews/dependency-security.md",
-      "source_sha256": "b69d3c4941f4c3353228f8aa866c3dac9d0547eabdd14537e2af07555e8ad3be",
+      "source_sha256": "82e25bcfeabf662ce207bd4bf3fb081a8af3c7a8b91efd538b71b95b02929822",
       "translations": {
         "ru": {
           "path": "docs/ru/reviews/dependency-security.md",
-          "sha256": "c9fd6eb330306f6cc3be2930fb3ec9c578842943db4f40b242a2ae735390666c",
+          "sha256": "4d480aefa22afa61e2db21a07c6c2f47b3cf1eb3470f874daf8b3bc0a9fd4196",
           "status": "current"
         }
       }

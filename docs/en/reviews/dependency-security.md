@@ -42,7 +42,9 @@ The product app is tested with a two-session limit: overflow returns 503,
 DELETE frees capacity, and a deleted ID returns 404. Bearer, origin, request
 body, read-only tool, and project-isolation checks remain enforced.
 
-vsce 4 requires Node.js 22+ for development and packaging. Both installers
+vsce 4 requires Node.js 22.12.0+ for development and packaging: earlier Node.js
+22 releases cannot load its ESM dependencies with synchronous `require()`.
+CI tests the exact minimum and the latest Node.js 22. Both installers
 check this before building; skipping the extension does not require Node.js.
 VS Code 1.90 remains supported. Build dependencies are excluded from the VSIX.
 
